@@ -439,32 +439,32 @@
               <span class="text-emerald-400 text-base">$${order.grandTotal.toLocaleString('es-CL')}</span>
             </div>
 
-            <div class="grid grid-cols-2 gap-1.5 pt-1">
-              <button onclick="printKitchenTicket('${order.id}')" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1 shadow-sm">🖨️ Ticket Cocina</button>
-              <button onclick="printCustomerTicket('${order.id}')" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">🖨️ Ticket Cliente</button>
-            </div>
-
-            <div class="grid grid-cols-3 gap-1 pt-1">
-              <button onclick="updateStatus('${order.id}', 'En Preparación')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] py-2 rounded-lg">👨‍🍳 Cocina</button>
-              <button onclick="updateStatus('${order.id}', 'En Camino')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] py-2 rounded-lg">🛵 Reparto</button>
-              <button onclick="updateStatus('${order.id}', 'Entregado')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] py-2 rounded-lg">✅ Entregado</button>
-            </div>
-
-            <div class="pt-1 border-t border-gray-800/60 flex gap-2">
-              <select onchange="handleCustomerCommunication('${order.id}', this.value); this.value='';" class="w-full bg-emerald-950 hover:bg-emerald-900 border border-emerald-600/40 text-emerald-300 font-bold text-xs py-2 px-3 rounded-xl focus:outline-none cursor-pointer">
-                <option value="" disabled selected>💬 Comunicar al Cliente (WhatsApp)</option>
-                <option value="aceptado">1. 👨‍🍳 Pedido Aceptado / En Preparación</option>
-                <option value="en_camino">2. 🛵 Pedido Enviado / En Camino</option>
-                <option value="finalizado">3. ✅ Pedido Finalizado / Listo</option>
+            <!-- BARRA INFERIOR SIMPLIFICADA (3 BOTONES UNIFICADOS) -->
+            <div class="grid grid-cols-[1fr_auto_auto] gap-1.5 pt-2 border-t border-gray-800/80">
+              <!-- 1. Menú Único para Cambiar Estado y Notificar WhatsApp -->
+              <select onchange="handleAction('${order.id}', this.value); this.value='';" class="bg-emerald-950 border border-emerald-600/40 text-emerald-300 font-bold text-xs py-2 px-2 rounded-xl focus:outline-none cursor-pointer">
+                <option value="" disabled selected>💬 Acciones / Estado ▾</option>
+                <option value="cocina">👨‍🍳 Aceptado / En Cocina</option>
+                <option value="camino">🛵 Enviado / En Camino (+Wsp)</option>
+                <option value="entregado">✅ Marcar Entregado</option>
               </select>
-              <button onclick="cancelOrder('${order.id}')" class="bg-red-950 hover:bg-red-900 border border-red-600/40 text-red-300 font-bold text-xs px-3 rounded-xl">❌</button>
+
+              <!-- 2. Botón Imprimir Ticket -->
+              <button onclick="printCustomerTicket('${order.id}')" class="bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs px-3 py-2 rounded-xl">
+                🖨️ Imprimir
+              </button>
+
+              <!-- 3. Botón Cancelar -->
+              <button onclick="cancelOrder('${order.id}')" class="bg-red-950 hover:bg-red-900 border border-red-600/40 text-red-300 font-bold text-xs px-3 py-2 rounded-xl">
+                ❌
+              </button>
             </div>
           </div>
         `;
       });
     }
 
-    function handleCustomerCommunication(orderId, action) {
+    function handleAction(orderId, action) {
       const o = allOrders[orderId];
       if (!o) return;
       let phone = o.phone.replace(/[^0-9]/g, '');
@@ -472,22 +472,20 @@
 
       let msg = "";
 
-      if (action === 'aceptado') {
+      if (action === 'cocina') {
         msg = `Hola *${o.customer}*! 👋 De *SUSHI & WOK* 🥢 te confirmamos que tu pedido ha sido *ACEPTADO Y YA SE ENCUENTRA EN PREPARACIÓN* 👨‍🍳.\n\n`;
         msg += `💰 Total: *$${o.grandTotal.toLocaleString('es-CL')}* (${o.paymentMethod})\n`;
         msg += `¡Te avisaremos apenas vaya en camino! 🍣`;
         updateStatus(orderId, 'En Preparación');
-      } else if (action === 'en_camino') {
+      } else if (action === 'camino') {
         msg = `Hola *${o.customer}*! 👋 De *SUSHI & WOK* 🥢 te informamos que tu pedido **¡YA VA EN CAMINO!** 🛵💨 hacia tu dirección.\n\n`;
         if (o.deliveryType === 'Domicilio') msg += `📍 Dirección: ${o.address}\n`;
         msg += `💰 Total a cancelar: *$${o.grandTotal.toLocaleString('es-CL')}* (${o.paymentMethod})\n\n`;
         msg += `¡Prepara tu mesa y gracias por preferirnos! 🍣`;
         updateStatus(orderId, 'En Camino');
-      } else if (action === 'finalizado') {
-        msg = `Hola *${o.customer}*! 👋 Saludos de *SUSHI & WOK* 🥢.\n\n`;
-        msg += `Tu pedido se encuentra **FINALIZADO Y LISTO** 🎉.\n`;
-        if (o.deliveryType === 'Retiro en Local') msg += `🛍️ Ya puedes pasar a retirarlo a nuestro local en Av. Ramón Picarte 3045.\n`;
-        msg += `\n¡Muchas gracias por tu compra! 🍣`;
+      } else if (action === 'entregado') {
+        updateStatus(orderId, 'Entregado');
+        return;
       }
 
       if (msg) {
@@ -846,33 +844,6 @@
       db.ref('menu').set(menuProducts);
     }
 
-    function printKitchenTicket(orderId) {
-      const o = allOrders[orderId];
-      if (!o) return;
-      let itemsTxt = o.items.map(i => `
-        <div style="font-size: 16px; font-weight: bold; margin-bottom: 6px;">
-          ${i.qty}x ${i.name}<br>
-          <span style="font-size: 13px; font-style: italic; font-weight: normal;">${i.detail || ''}</span>
-        </div>
-      `).join('<hr style="border-top: 1px dashed #ccc; margin: 4px 0;">');
-
-      document.getElementById('print-area').innerHTML = `
-        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 8px;">
-          <h2 style="margin: 0; font-size: 18px; font-weight: bold;">*** COMANDA COCINA ***</h2>
-          <p style="margin: 2px 0; font-size: 12px;">HORA: ${o.date} | TIPO: ${o.deliveryType.toUpperCase()}</p>
-        </div>
-        <div style="margin-bottom: 8px; font-size: 13px;">
-          <strong>CLIENTE:</strong> ${o.customer}<br>
-          <strong>TEL:</strong> ${o.phone}
-        </div>
-        <hr style="border-top: 2px solid #000; margin: 6px 0;">
-        <div>${itemsTxt}</div>
-        <hr style="border-top: 2px solid #000; margin: 8px 0;">
-        <p style="text-align: center; font-size: 11px; margin: 0;">-- SUSHI & WOK COCINA --</p>
-      `;
-      window.print();
-    }
-
     function printCustomerTicket(orderId) {
       const o = allOrders[orderId];
       if (!o) return;
@@ -904,7 +875,7 @@
         <div style="font-size: 11px;">
           <div style="display: flex; justify-content: space-between;"><span>Subtotal Platos:</span><span>$${(o.subtotal || 0).toLocaleString('es-CL')}</span></div>
           <div style="display: flex; justify-content: space-between;"><span>Despacho:</span><span>$${(o.deliveryCost || 0).toLocaleString('es-CL')}</span></div>
-          <div style="display: flex; justify-content: space-system; font-size: 14px; font-weight: bold; margin-top: 4px; border-t: 1px solid #000; padding-top: 2px;">
+          <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin-top: 4px; border-t: 1px solid #000; padding-top: 2px;">
             <span>TOTAL:</span><span>$${o.grandTotal.toLocaleString('es-CL')}</span>
           </div>
         </div>
