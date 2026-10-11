@@ -776,10 +776,11 @@
     }
 
     function openEditModal(orderId) {
-      editingOrderId = orderId;
-      const ordersArray = Object.keys(allOrders).map((key, index) => ({ id: key, orderNum: index + 1, ...allOrders[key] }));
-      const order = ordersArray.find(o => o.id === orderId);
-      if (!order) return;
+  editingOrderId = orderId;
+  const order = allOrders[orderId];
+  if (!order) return;
+  ...
+
 
       document.getElementById('edit-modal-order-num').innerText = "#" + String(order.orderNum).padStart(3, '0');
       document.getElementById('edit-cust-name').value = order.customer || "";
