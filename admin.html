@@ -28,12 +28,12 @@
       <h1 class="text-2xl font-black text-amber-400 flex items-center gap-2">🥢 SUSHI & WOK <span class="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md font-bold">PANEL CONTROL</span></h1>
       <p class="text-xs text-gray-400">Av. Ramón Picarte 3045, Valdivia</p>
     </div>
-    <div class="flex items-center gap-3">
-      <div class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-2">
-        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> Sistema En Vivo
-      </div>
+    <div class="flex items-center gap-2 flex-wrap">
+      <button onclick="openNewManualOrderModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold px-3 py-1.5 rounded-xl shadow flex items-center gap-1">
+        ➕ Nuevo Pedido Mesón
+      </button>
       <button onclick="enableAudioAlerts()" id="audio-enable-btn" class="bg-amber-500 hover:bg-amber-600 text-gray-950 text-xs font-extrabold px-3 py-1.5 rounded-xl shadow">
-        🔔 Activar Alarma Sonora
+        🔔 Activar Alarma
       </button>
     </div>
   </header>
@@ -50,7 +50,7 @@
       📊 Cuadre de Caja
     </button>
     <button onclick="switchTab('menu')" id="tab-btn-menu" class="tab-btn bg-gray-800 text-gray-300 hover:bg-gray-700 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 whitespace-nowrap">
-      ⚙️ Menú / Precios / Stock
+      ⚙️ Menú / Horario / Stock
     </button>
   </div>
 
@@ -68,7 +68,7 @@
     <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="orders-container"></main>
   </section>
 
-  <!-- SECCIÓN 2: PEDIDOS ENTREGADOS (HISTORIAL COMPLETO) -->
+  <!-- SECCIÓN 2: PEDIDOS ENTREGADOS -->
   <section id="sec-entregados" class="space-y-4 hidden">
     <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 flex justify-between items-center">
       <div>
@@ -131,18 +131,35 @@
     </div>
   </section>
 
-  <!-- SECCIÓN 4: GESTIÓN DE MENÚ / PRECIOS / STOCK -->
-  <section id="sec-menu" class="space-y-4 hidden">
-    <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 flex justify-between items-center">
-      <div>
-        <h2 class="text-lg font-black text-white">⚙️ Administración de Productos y Precios</h2>
-        <p class="text-xs text-gray-400">Pausa productos agotados o cambia sus precios en tiempo real.</p>
+  <!-- SECCIÓN 4: GESTIÓN DE MENÚ / HORARIO / STOCK -->
+  <section id="sec-menu" class="space-y-6 hidden">
+    <!-- Configuración de Horario -->
+    <div class="bg-gray-900 p-5 rounded-2xl border border-gray-800 space-y-3">
+      <h2 class="text-base font-black text-amber-400">🕒 Configuración de Horario de Atención</h2>
+      <p class="text-xs text-gray-400">Define las horas de apertura y cierre para recepción de pedidos en la web del cliente.</p>
+      
+      <div class="flex flex-wrap items-center gap-4 pt-2">
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-bold text-gray-300">Hora Apertura:</label>
+          <input type="time" id="sched-open-time" class="bg-gray-950 border border-gray-700 text-amber-400 font-bold text-xs p-2 rounded-xl">
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-bold text-gray-300">Hora Cierre:</label>
+          <input type="time" id="sched-close-time" class="bg-gray-950 border border-gray-700 text-amber-400 font-bold text-xs p-2 rounded-xl">
+        </div>
+        <button onclick="saveSchedule()" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black text-xs px-4 py-2 rounded-xl">
+          💾 Guardar Horario
+        </button>
       </div>
     </div>
-    <div class="bg-gray-900 rounded-2xl p-4 border border-gray-800 space-y-3" id="admin-menu-list"></div>
+
+    <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 space-y-3">
+      <h2 class="text-base font-black text-white">⚙️ Administración de Productos y Precios</h2>
+      <div class="space-y-3" id="admin-menu-list"></div>
+    </div>
   </section>
 
-  <!-- MODAL EDITAR COMANDA CON CATÁLOGO VISUAL -->
+  <!-- MODAL EDITAR COMANDA -->
   <div id="edit-order-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-4 hidden">
     <div class="bg-gray-900 w-full max-w-xl rounded-3xl p-5 border border-gray-800 space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-gray-800 pb-3">
@@ -172,6 +189,64 @@
     </div>
   </div>
 
+  <!-- MODAL NUEVO PEDIDO MANUAL (MESÓN / PRESENCIAL) -->
+  <div id="manual-order-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-gray-900 w-full max-w-xl rounded-3xl p-5 border border-gray-800 space-y-4 max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+        <h3 class="font-black text-lg text-emerald-400">➕ Ingresar Nuevo Pedido (Mesón / Presencial)</h3>
+        <button onclick="closeManualOrderModal()" class="text-gray-400 font-bold text-2xl">✕</button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <div>
+          <label class="block font-bold text-gray-400">Nombre Cliente *</label>
+          <input type="text" id="manual-cust-name" placeholder="Ej: Cliente Mesón" class="w-full mt-1 p-2 bg-gray-950 border border-gray-700 text-white rounded-xl font-bold">
+        </div>
+        <div>
+          <label class="block font-bold text-gray-400">Teléfono</label>
+          <input type="text" id="manual-cust-phone" placeholder="Ej: +569..." class="w-full mt-1 p-2 bg-gray-950 border border-gray-700 text-white rounded-xl font-bold">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <div>
+          <label class="block font-bold text-gray-400">Tipo Entrega</label>
+          <select id="manual-delivery-type" class="w-full mt-1 p-2 bg-gray-950 border border-gray-700 text-white rounded-xl font-bold">
+            <option value="Retiro en Local">🛍️ Retiro en Local / Mesón</option>
+            <option value="Domicilio">🛵 Domicilio</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-bold text-gray-400">Medio Pago</label>
+          <select id="manual-payment" class="w-full mt-1 p-2 bg-gray-950 border border-gray-700 text-white rounded-xl font-bold">
+            <option value="Efectivo">💵 Efectivo</option>
+            <option value="Transferencia">🏦 Transferencia</option>
+            <option value="Tarjeta">💳 Tarjeta / POS</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-xs font-bold text-amber-400 uppercase">📋 Productos del Pedido:</label>
+        <div id="manual-items-container" class="space-y-2 max-h-36 overflow-y-auto p-1 bg-gray-950/50 rounded-xl"></div>
+      </div>
+
+      <div class="space-y-2 pt-2 border-t border-gray-800">
+        <label class="block text-xs font-bold text-gray-400 uppercase">🍱 Selecciona productos para agregar:</label>
+        <div id="manual-product-picker" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1 no-scrollbar"></div>
+      </div>
+
+      <div class="flex justify-between items-center bg-gray-950 p-3 rounded-xl border border-gray-800 text-sm font-black">
+        <span>TOTAL PEDIDO:</span>
+        <span id="manual-total-val" class="text-emerald-400 text-lg">$0</span>
+      </div>
+
+      <button onclick="submitManualOrder()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-2xl shadow-xl transition-all">
+        🚀 Confirmar y Enviar a Cocina
+      </button>
+    </div>
+  </div>
+
   <div id="print-area"></div>
 
   <script>
@@ -188,6 +263,7 @@
     let previousOrderCount = null;
     let editingOrderId = null;
     let editingCartItems = [];
+    let manualCartItems = [];
 
     document.getElementById('report-date-picker').value = new Date().toISOString().split('T')[0];
 
@@ -235,6 +311,30 @@
       }
     });
 
+    db.ref('horario').on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        document.getElementById('sched-open-time').value = data.open || "17:00";
+        document.getElementById('sched-close-time').value = data.close || "23:55";
+      } else {
+        document.getElementById('sched-open-time').value = "17:00";
+        document.getElementById('sched-close-time').value = "23:55";
+      }
+    });
+
+    function saveSchedule() {
+      const openVal = document.getElementById('sched-open-time').value;
+      const closeVal = document.getElementById('sched-close-time').value;
+
+      if (!openVal || !closeVal) {
+        alert("Por favor selecciona ambas horas.");
+        return;
+      }
+
+      db.ref('horario').set({ open: openVal, close: closeVal });
+      alert("¡Horario guardado correctamente!");
+    }
+
     function switchTab(tab) {
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('bg-amber-500', 'text-gray-950');
@@ -276,13 +376,12 @@
       return `⏱️ Lleva ${diffMin} min`;
     }
 
-    // Renderizar Pedidos Activos
     function renderLiveOrders() {
       const container = document.getElementById('orders-container');
       container.innerHTML = '';
 
       const ordersArray = Object.keys(allOrders).map(key => ({ id: key, ...allOrders[key] })).reverse();
-      const activeOrders = ordersArray.filter(o => o.status !== 'Entregado');
+      const activeOrders = ordersArray.filter(o => o.status !== 'Entregado' && o.status !== 'Cancelado');
       const filtered = currentLiveFilter === 'Todos' ? activeOrders : activeOrders.filter(o => o.status === currentLiveFilter);
 
       if (filtered.length === 0) {
@@ -345,14 +444,19 @@
             <div class="grid grid-cols-3 gap-1 pt-1 border-t border-gray-800/60">
               <button onclick="sendCustomerWsp('${order.id}')" class="bg-emerald-950 hover:bg-emerald-900 border border-emerald-600/40 text-emerald-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center">💬 Avisar</button>
               <button onclick="sendOnWayWsp('${order.id}')" class="bg-blue-950 hover:bg-blue-900 border border-blue-600/40 text-blue-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center">🛵 ¡Va en Camino!</button>
-              <button onclick="sendDriverWsp('${order.id}')" class="bg-amber-950 hover:bg-amber-900 border border-amber-600/40 text-amber-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center">🗺️ Repartidor</button>
+              <button onclick="cancelOrder('${order.id}')" class="bg-red-950 hover:bg-red-900 border border-red-600/40 text-red-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center">❌ Cancelar</button>
             </div>
           </div>
         `;
       });
     }
 
-    // Renderizar Pestaña de Pedidos Entregados
+    function cancelOrder(orderId) {
+      if (confirm("¿Seguro que deseas cancelar / eliminar este pedido?")) {
+        db.ref(`pedidos/${orderId}`).remove();
+      }
+    }
+
     function renderCompletedOrders() {
       const container = document.getElementById('completed-orders-container');
       container.innerHTML = '';
@@ -406,6 +510,111 @@
           </div>
         `;
       });
+    }
+
+    // ➕ LÓGICA DE PEDIDO MANUAL / MESÓN
+    function openNewManualOrderModal() {
+      manualCartItems = [];
+      document.getElementById('manual-cust-name').value = "Cliente Mesón";
+      document.getElementById('manual-cust-phone').value = "+56900000000";
+      renderManualItems();
+      renderManualVisualPicker();
+      document.getElementById('manual-order-modal').classList.remove('hidden');
+    }
+
+    function closeManualOrderModal() {
+      document.getElementById('manual-order-modal').classList.add('hidden');
+    }
+
+    function renderManualVisualPicker() {
+      const container = document.getElementById('manual-product-picker');
+      container.innerHTML = '';
+
+      menuProducts.forEach(p => {
+        container.innerHTML += `
+          <div onclick="addManualItem(${p.id})" class="flex items-center gap-2 p-1.5 bg-gray-950 hover:bg-gray-800 border border-gray-800 rounded-xl cursor-pointer">
+            <img src="${p.img}" class="w-10 h-10 rounded-lg object-cover">
+            <div class="flex-1 min-w-0">
+              <h5 class="text-[11px] font-bold text-white truncate">${p.name}</h5>
+              <p class="text-[10px] font-black text-amber-400">$${p.price.toLocaleString('es-CL')}</p>
+            </div>
+            <button class="bg-amber-500 text-gray-950 font-black text-[10px] px-2 py-0.5 rounded">+ Agregar</button>
+          </div>
+        `;
+      });
+    }
+
+    function addManualItem(prodId) {
+      const p = menuProducts.find(prod => prod.id === prodId);
+      if (!p) return;
+
+      const idx = manualCartItems.findIndex(i => i.id === p.id);
+      if (idx >= 0) manualCartItems[idx].qty += 1;
+      else manualCartItems.push({ id: p.id, name: p.name, price: p.price, qty: 1, detail: "" });
+
+      renderManualItems();
+    }
+
+    function renderManualItems() {
+      const container = document.getElementById('manual-items-container');
+      container.innerHTML = '';
+
+      let total = 0;
+      manualCartItems.forEach((item, idx) => {
+        total += (item.price * item.qty);
+        container.innerHTML += `
+          <div class="flex justify-between items-center bg-gray-950 p-2 rounded-xl border border-gray-800 text-xs">
+            <span class="font-bold text-gray-200">${item.qty}x ${item.name}</span>
+            <div class="flex items-center gap-2">
+              <button onclick="changeManualQty(${idx}, -1)" class="w-5 h-5 bg-gray-800 text-white rounded font-bold">-</button>
+              <span class="font-bold text-amber-400">${item.qty}</span>
+              <button onclick="changeManualQty(${idx}, 1)" class="w-5 h-5 bg-gray-800 text-white rounded font-bold">+</button>
+            </div>
+          </div>
+        `;
+      });
+
+      document.getElementById('manual-total-val').innerText = '$' + total.toLocaleString('es-CL');
+    }
+
+    function changeManualQty(idx, delta) {
+      manualCartItems[idx].qty += delta;
+      if (manualCartItems[idx].qty <= 0) manualCartItems.splice(idx, 1);
+      renderManualItems();
+    }
+
+    function submitManualOrder() {
+      if (manualCartItems.length === 0) {
+        alert("Agrega al menos un producto.");
+        return;
+      }
+
+      const name = document.getElementById('manual-cust-name').value.trim() || "Cliente Mesón";
+      const phone = document.getElementById('manual-cust-phone').value.trim() || "+56900000000";
+      const delType = document.getElementById('manual-delivery-type').value;
+      const payment = document.getElementById('manual-payment').value;
+
+      const total = manualCartItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+      const orderData = {
+        timestamp: Date.now(),
+        date: new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+        customer: name,
+        phone: phone,
+        deliveryType: delType,
+        address: delType === 'Domicilio' ? "Dirección ingresada en mesón" : "Retiro en Local (Av. Picarte 3045)",
+        km: 0,
+        paymentMethod: payment,
+        items: manualCartItems,
+        subtotal: total,
+        deliveryCost: 0,
+        grandTotal: total,
+        status: 'En Preparación'
+      };
+
+      db.ref('pedidos').push(orderData);
+      closeManualOrderModal();
+      alert("¡Pedido ingresado correctamente y enviado a cocina!");
     }
 
     function openEditModal(orderId) {
