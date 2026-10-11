@@ -779,43 +779,47 @@
   editingOrderId = orderId;
   const order = allOrders[orderId];
   if (!order) return;
-  ...
 
+  // Calcular número correlativo visual
+  const ordersArray = Object.keys(allOrders).map((key, index) => ({ id: key, orderNum: index + 1, ...allOrders[key] }));
+  const foundOrderIndex = ordersArray.findIndex(o => o.id === orderId);
+  const displayNum = foundOrderIndex !== -1 ? ordersArray[foundOrderIndex].orderNum : 1;
 
-      document.getElementById('edit-modal-order-num').innerText = "#" + String(order.orderNum).padStart(3, '0');
-      document.getElementById('edit-cust-name').value = order.customer || "";
-      document.getElementById('edit-cust-phone').value = order.phone || "";
+  document.getElementById('edit-modal-order-num').innerText = "#" + String(displayNum).padStart(3, '0');
+  document.getElementById('edit-cust-name').value = order.customer || "";
+  document.getElementById('edit-cust-phone').value = order.phone || "";
 
-      editingCartItems = JSON.parse(JSON.stringify(order.items || []));
+  editingCartItems = JSON.parse(JSON.stringify(order.items || []));
 
-      const delTypeSelect = document.getElementById('edit-delivery-type');
-      delTypeSelect.value = order.deliveryType || 'Retiro en Local';
+  const delTypeSelect = document.getElementById('edit-delivery-type');
+  delTypeSelect.value = order.deliveryType || 'Retiro en Local';
+  
+  document.getElementById('edit-address-val').value = order.address || '';
+  document.getElementById('edit-delivery-cost-val').value = order.deliveryCost || 0;
+  document.getElementById('edit-kitchen-notes').value = order.notes || '';
+  document.getElementById('edit-product-search').value = '';
+
+  const paySelect = document.getElementById('edit-payment-method');
+  paySelect.value = order.paymentMethod || 'Efectivo';
+  togglePaymentInputs('edit');
+
+  if (order.paymentMethod === 'Efectivo') {
+    document.getElementById('edit-cash-amount').value = order.cashAmount || '';
+  } else if (order.paymentMethod === 'Pago Múltiple' && order.paymentBreakdown) {
+    document.getElementById('edit-multi-cash').value = order.paymentBreakdown.cash || 0;
+    document.getElementById('edit-multi-cash-paid').value = order.paymentBreakdown.cashPaid || 0;
+    document.getElementById('edit-multi-card').value = order.paymentBreakdown.card || 0;
+    document.getElementById('edit-multi-transfer').value = order.paymentBreakdown.transfer || 0;
+    calculateMultiTotals('edit');
+  }
+
+  toggleEditDeliveryFields();
+  renderEditItems();
+  renderVisualProductPicker();
+  document.getElementById('edit-order-modal').classList.remove('hidden');
+}
+
       
-      document.getElementById('edit-address-val').value = order.address || '';
-      document.getElementById('edit-delivery-cost-val').value = order.deliveryCost || 0;
-      document.getElementById('edit-kitchen-notes').value = order.notes || '';
-      document.getElementById('edit-product-search').value = '';
-
-      const paySelect = document.getElementById('edit-payment-method');
-      paySelect.value = order.paymentMethod || 'Efectivo';
-      togglePaymentInputs('edit');
-
-      if (order.paymentMethod === 'Efectivo') {
-        document.getElementById('edit-cash-amount').value = order.cashAmount || '';
-      } else if (order.paymentMethod === 'Pago Múltiple' && order.paymentBreakdown) {
-        document.getElementById('edit-multi-cash').value = order.paymentBreakdown.cash || 0;
-        document.getElementById('edit-multi-cash-paid').value = order.paymentBreakdown.cashPaid || 0;
-        document.getElementById('edit-multi-card').value = order.paymentBreakdown.card || 0;
-        document.getElementById('edit-multi-transfer').value = order.paymentBreakdown.transfer || 0;
-        calculateMultiTotals('edit');
-      }
-
-      toggleEditDeliveryFields();
-      renderEditItems();
-      renderVisualProductPicker();
-      document.getElementById('edit-order-modal').classList.remove('hidden');
-    }
-
     function toggleEditDeliveryFields() {
       const type = document.getElementById('edit-delivery-type').value;
       const container = document.getElementById('edit-address-container');
