@@ -524,12 +524,15 @@
     function calculateChange(mode) {
       let totalToPay = 0;
       if (mode === 'edit') {
-        const res = calculateEditTotals();
-        totalToPay = res.grandTotal;
+        const subtotal = editingCartItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+        const deliveryInput = document.getElementById('edit-delivery-cost-val');
+        const deliveryCost = deliveryInput ? (parseInt(deliveryInput.value) || 0) : 0;
+        totalToPay = subtotal + deliveryCost;
       } else {
         totalToPay = manualCartItems.reduce((s, i) => s + (i.price * i.qty), 0);
       }
-      const paid = parseInt(document.getElementById(`${mode}-cash-amount`).value) || 0;
+      const paidInput = document.getElementById(`${mode}-cash-amount`);
+      const paid = paidInput ? (parseInt(paidInput.value) || 0) : 0;
       const change = paid - totalToPay;
       const disp = document.getElementById(`${mode}-change-display`);
       if (disp) disp.innerText = change >= 0 ? `Vuelto: $${change.toLocaleString('es-CL')}` : `Falta: $${Math.abs(change).toLocaleString('es-CL')}`;
@@ -609,7 +612,7 @@
         if (order.status === 'En Preparación') statusColor = "bg-blue-500/20 text-blue-400 border-blue-500/40";
         if (order.status === 'En Camino') statusColor = "bg-purple-500/20 text-purple-400 border-purple-500/40";
 
-        let itemsHtml = order.items.map(i => `
+        let itemsHtml = (order.items || []).map(i => `
           <div class="flex justify-between text-xs py-1 border-b border-gray-800/60">
             <span><strong class="text-amber-400">${i.qty}x</strong> ${i.name} <em class="text-[10px] text-gray-400">${i.detail || ''}</em></span>
             <span class="font-bold">$${(i.price * i.qty).toLocaleString('es-CL')}</span>
@@ -618,7 +621,7 @@
 
         const formattedOrderNum = "#" + String(order.orderNum).padStart(3, '0');
 
-        let paymentDetailHtml = order.paymentMethod;
+        let paymentDetailHtml = order.paymentMethod || 'Efectivo';
         if (order.paymentBreakdown) {
           paymentDetailHtml = `🔀 Múltiple: Efe: $${(order.paymentBreakdown.cash||0).toLocaleString('es-CL')} | Tarj: $${(order.paymentBreakdown.card||0).toLocaleString('es-CL')} | Transf: $${(order.paymentBreakdown.transfer||0).toLocaleString('es-CL')}`;
         } else if (order.cashAmount && order.changeAmount >= 0) {
@@ -633,8 +636,8 @@
                   <span class="text-xs font-black bg-amber-500 text-gray-950 px-2 py-0.5 rounded-lg">${formattedOrderNum}</span>
                   <span class="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">${getElapsedTime(order.timestamp)}</span>
                 </div>
-                <h3 class="text-base font-black text-white mt-1.5">${order.customer}</h3>
-                <p class="text-xs text-gray-400 font-bold">📞 ${order.phone}</p>
+                <h3 class="text-base font-black text-white mt-1.5">${order.customer || 'Cliente'}</h3>
+                <p class="text-xs text-gray-400 font-bold">📞 ${order.phone || ''}</p>
               </div>
               <div class="flex flex-col items-end gap-1">
                 <span class="px-2 py-0.5 rounded-lg text-[11px] font-bold border ${statusColor}">${order.status}</span>
@@ -643,8 +646,8 @@
             </div>
 
             <div class="bg-gray-950 p-2.5 rounded-xl space-y-1 text-xs border border-gray-800/80">
-              <p class="font-bold text-gray-300">🛵 ${order.deliveryType} ${order.km ? `(~${order.km} KM)` : ''}</p>
-              <p class="text-gray-400 line-clamp-1">📍 ${order.address}</p>
+              <p class="font-bold text-gray-300">🛵 ${order.deliveryType || ''} ${order.km ? `(~${order.km} KM)` : ''}</p>
+              <p class="text-gray-400 line-clamp-1">📍 ${order.address || ''}</p>
               <p class="font-bold text-emerald-400">💳 ${paymentDetailHtml}</p>
               ${order.notes ? `<p class="mt-1 text-amber-300 font-bold bg-amber-500/10 p-1.5 rounded-lg border border-amber-500/20">📝 NOTA COCINA: ${order.notes}</p>` : ''}
             </div>
@@ -655,7 +658,7 @@
 
             <div class="flex justify-between items-center text-xs font-black pt-2 border-t border-gray-800">
               <span>TOTAL COMANDA:</span>
-              <span class="text-emerald-400 text-base">$${order.grandTotal.toLocaleString('es-CL')}</span>
+              <span class="text-emerald-400 text-base">$${(order.grandTotal || 0).toLocaleString('es-CL')}</span>
             </div>
 
             <div class="grid grid-cols-[1fr_auto_auto] gap-1.5 pt-2 border-t border-gray-800/80">
@@ -682,20 +685,20 @@
     function handleAction(orderId, action) {
       const o = allOrders[orderId];
       if (!o) return;
-      let phone = o.phone.replace(/[^0-9]/g, '');
-      if (!phone.startsWith('56')) phone = '56' + phone;
+      let phone = (o.phone || '').replace(/[^0-9]/g, '');
+      if (phone && !phone.startsWith('56')) phone = '56' + phone;
 
       let msg = "";
 
       if (action === 'cocina') {
         msg = `Hola *${o.customer}*! 👋 De *SUSHI & WOK* 🥢 te confirmamos que tu pedido ha sido *ACEPTADO Y YA SE ENCUENTRA EN PREPARACIÓN* 👨‍🍳.\n\n`;
-        msg += `💰 Total: *$${o.grandTotal.toLocaleString('es-CL')}* (${o.paymentMethod})\n`;
+        msg += `💰 Total: *$${(o.grandTotal || 0).toLocaleString('es-CL')}* (${o.paymentMethod})\n`;
         msg += `¡Te avisaremos apenas vaya en camino! 🍣`;
         updateStatus(orderId, 'En Preparación');
       } else if (action === 'camino') {
         msg = `Hola *${o.customer}*! 👋 De *SUSHI & WOK* 🥢 te informamos que tu pedido **¡YA VA EN CAMINO!** 🛵💨 hacia tu dirección.\n\n`;
         if (o.deliveryType === 'Domicilio') msg += `📍 Dirección: ${o.address}\n`;
-        msg += `💰 Total a cancelar: *$${o.grandTotal.toLocaleString('es-CL')}* (${o.paymentMethod})\n\n`;
+        msg += `💰 Total a cancelar: *$${(o.grandTotal || 0).toLocaleString('es-CL')}* (${o.paymentMethod})\n\n`;
         msg += `¡Prepara tu mesa y gracias por preferirnos! 🍣`;
         updateStatus(orderId, 'En Camino');
       } else if (action === 'entregado') {
@@ -703,7 +706,7 @@
         return;
       }
 
-      if (msg) {
+      if (msg && phone) {
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
       }
     }
@@ -727,7 +730,7 @@
       }
 
       completedOrders.forEach(order => {
-        let itemsHtml = order.items.map(i => `
+        let itemsHtml = (order.items || []).map(i => `
           <div class="flex justify-between text-xs py-1 border-b border-gray-800/60">
             <span><strong class="text-amber-400">${i.qty}x</strong> ${i.name} <em class="text-[10px] text-gray-400">${i.detail || ''}</em></span>
             <span class="font-bold">$${(i.price * i.qty).toLocaleString('es-CL')}</span>
@@ -742,18 +745,18 @@
               <div>
                 <div class="flex items-center gap-2">
                   <span class="text-xs font-black bg-gray-700 text-gray-200 px-2 py-0.5 rounded-lg">${formattedOrderNum}</span>
-                  <span class="text-[10px] font-bold text-gray-500">HORA: ${order.date}</span>
+                  <span class="text-[10px] font-bold text-gray-500">HORA: ${order.date || ''}</span>
                 </div>
-                <h3 class="text-base font-black text-white mt-1.5">${order.customer}</h3>
-                <p class="text-xs text-gray-400 font-bold">📞 ${order.phone}</p>
+                <h3 class="text-base font-black text-white mt-1.5">${order.customer || 'Cliente'}</h3>
+                <p class="text-xs text-gray-400 font-bold">📞 ${order.phone || ''}</p>
               </div>
               <span class="px-2 py-0.5 rounded-lg text-[11px] font-bold border bg-emerald-500/20 text-emerald-400 border-emerald-500/40">✅ ENTREGADO</span>
             </div>
 
             <div class="bg-gray-950 p-2.5 rounded-xl space-y-1 text-xs border border-gray-800/80">
-              <p class="font-bold text-gray-300">🛵 ${order.deliveryType} ${order.km ? `(~${order.km} KM)` : ''}</p>
-              <p class="text-gray-400 line-clamp-1">📍 ${order.address}</p>
-              <p class="font-bold text-emerald-400">💳 ${order.paymentMethod}</p>
+              <p class="font-bold text-gray-300">🛵 ${order.deliveryType || ''} ${order.km ? `(~${order.km} KM)` : ''}</p>
+              <p class="text-gray-400 line-clamp-1">📍 ${order.address || ''}</p>
+              <p class="font-bold text-emerald-400">💳 ${order.paymentMethod || ''}</p>
               ${order.notes ? `<p class="mt-1 text-amber-300 font-bold bg-amber-500/10 p-1 rounded">📝 NOTA: ${order.notes}</p>` : ''}
             </div>
 
@@ -763,7 +766,7 @@
 
             <div class="flex justify-between items-center text-xs font-black pt-2 border-t border-gray-800">
               <span>TOTAL COMANDA:</span>
-              <span class="text-emerald-400 text-base">$${order.grandTotal.toLocaleString('es-CL')}</span>
+              <span class="text-emerald-400 text-base">$${(order.grandTotal || 0).toLocaleString('es-CL')}</span>
             </div>
 
             <div class="grid grid-cols-2 gap-1.5 pt-1">
@@ -776,50 +779,48 @@
     }
 
     function openEditModal(orderId) {
-  editingOrderId = orderId;
-  const order = allOrders[orderId];
-  if (!order) return;
+      editingOrderId = orderId;
+      const order = allOrders[orderId];
+      if (!order) return;
 
-  // Calcular número correlativo visual
-  const ordersArray = Object.keys(allOrders).map((key, index) => ({ id: key, orderNum: index + 1, ...allOrders[key] }));
-  const foundOrderIndex = ordersArray.findIndex(o => o.id === orderId);
-  const displayNum = foundOrderIndex !== -1 ? ordersArray[foundOrderIndex].orderNum : 1;
+      const keys = Object.keys(allOrders);
+      const orderIndex = keys.indexOf(orderId) + 1;
+      const displayNum = orderIndex > 0 ? orderIndex : 1;
 
-  document.getElementById('edit-modal-order-num').innerText = "#" + String(displayNum).padStart(3, '0');
-  document.getElementById('edit-cust-name').value = order.customer || "";
-  document.getElementById('edit-cust-phone').value = order.phone || "";
+      document.getElementById('edit-modal-order-num').innerText = "#" + String(displayNum).padStart(3, '0');
+      document.getElementById('edit-cust-name').value = order.customer || "";
+      document.getElementById('edit-cust-phone').value = order.phone || "";
 
-  editingCartItems = JSON.parse(JSON.stringify(order.items || []));
+      editingCartItems = JSON.parse(JSON.stringify(order.items || []));
 
-  const delTypeSelect = document.getElementById('edit-delivery-type');
-  delTypeSelect.value = order.deliveryType || 'Retiro en Local';
-  
-  document.getElementById('edit-address-val').value = order.address || '';
-  document.getElementById('edit-delivery-cost-val').value = order.deliveryCost || 0;
-  document.getElementById('edit-kitchen-notes').value = order.notes || '';
-  document.getElementById('edit-product-search').value = '';
-
-  const paySelect = document.getElementById('edit-payment-method');
-  paySelect.value = order.paymentMethod || 'Efectivo';
-  togglePaymentInputs('edit');
-
-  if (order.paymentMethod === 'Efectivo') {
-    document.getElementById('edit-cash-amount').value = order.cashAmount || '';
-  } else if (order.paymentMethod === 'Pago Múltiple' && order.paymentBreakdown) {
-    document.getElementById('edit-multi-cash').value = order.paymentBreakdown.cash || 0;
-    document.getElementById('edit-multi-cash-paid').value = order.paymentBreakdown.cashPaid || 0;
-    document.getElementById('edit-multi-card').value = order.paymentBreakdown.card || 0;
-    document.getElementById('edit-multi-transfer').value = order.paymentBreakdown.transfer || 0;
-    calculateMultiTotals('edit');
-  }
-
-  toggleEditDeliveryFields();
-  renderEditItems();
-  renderVisualProductPicker();
-  document.getElementById('edit-order-modal').classList.remove('hidden');
-}
-
+      const delTypeSelect = document.getElementById('edit-delivery-type');
+      delTypeSelect.value = order.deliveryType || 'Retiro en Local';
       
+      document.getElementById('edit-address-val').value = order.address || '';
+      document.getElementById('edit-delivery-cost-val').value = order.deliveryCost || 0;
+      document.getElementById('edit-kitchen-notes').value = order.notes || '';
+      document.getElementById('edit-product-search').value = '';
+
+      const paySelect = document.getElementById('edit-payment-method');
+      paySelect.value = order.paymentMethod || 'Efectivo';
+      togglePaymentInputs('edit');
+
+      if (order.paymentMethod === 'Efectivo') {
+        document.getElementById('edit-cash-amount').value = order.cashAmount || '';
+      } else if (order.paymentMethod === 'Pago Múltiple' && order.paymentBreakdown) {
+        document.getElementById('edit-multi-cash').value = order.paymentBreakdown.cash || 0;
+        document.getElementById('edit-multi-cash-paid').value = order.paymentBreakdown.cashPaid || 0;
+        document.getElementById('edit-multi-card').value = order.paymentBreakdown.card || 0;
+        document.getElementById('edit-multi-transfer').value = order.paymentBreakdown.transfer || 0;
+        calculateMultiTotals('edit');
+      }
+
+      toggleEditDeliveryFields();
+      renderEditItems();
+      renderVisualProductPicker();
+      document.getElementById('edit-order-modal').classList.remove('hidden');
+    }
+
     function toggleEditDeliveryFields() {
       const type = document.getElementById('edit-delivery-type').value;
       const container = document.getElementById('edit-address-container');
@@ -1194,20 +1195,21 @@
     }
 
     function printCustomerTicket(orderId) {
-      const ordersArray = Object.keys(allOrders).map((key, index) => ({ id: key, orderNum: index + 1, ...allOrders[key] }));
-      const o = ordersArray.find(item => item.id === orderId);
+      const keys = Object.keys(allOrders);
+      const orderIndex = keys.indexOf(orderId) + 1;
+      const o = allOrders[orderId];
       if (!o) return;
 
-      const formattedOrderNum = "#" + String(o.orderNum).padStart(3, '0');
+      const formattedOrderNum = "#" + String(orderIndex > 0 ? orderIndex : 1).padStart(3, '0');
 
-      let itemsTxt = o.items.map(i => `
+      let itemsTxt = (o.items || []).map(i => `
         <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
           <span>${i.qty}x ${i.name} ${i.detail || ''}</span>
           <span>$${(i.price * i.qty).toLocaleString('es-CL')}</span>
         </div>
       `).join('');
 
-      let paymentTicketTxt = `<strong>MEDIO DE PAGO:</strong> ${o.paymentMethod}<br>`;
+      let paymentTicketTxt = `<strong>MEDIO DE PAGO:</strong> ${o.paymentMethod || ''}<br>`;
       if (o.paymentBreakdown) {
         paymentTicketTxt += `<div style="padding:2px 0;"><strong>DESGLOSE PAGO MÚLTIPLE:</strong><br>`;
         if (o.paymentBreakdown.cash > 0) paymentTicketTxt += `- Efectivo: $${o.paymentBreakdown.cash.toLocaleString('es-CL')} (Pagó: $${(o.paymentBreakdown.cashPaid||0).toLocaleString('es-CL')} | Vuelto: $${(o.paymentBreakdown.change||0).toLocaleString('es-CL')})<br>`;
@@ -1225,10 +1227,10 @@
           <p style="margin: 0; font-size: 14px; font-weight: bold;">PEDIDO ${formattedOrderNum}</p>
         </div>
         <div style="margin-bottom: 8px; font-size: 11px;">
-          <strong>HORA:</strong> ${o.date}<br>
-          <strong>CLIENTE:</strong> ${o.customer}<br>
-          <strong>TELÉFONO:</strong> ${o.phone}<br>
-          <strong>TIPO:</strong> ${o.deliveryType}<br>
+          <strong>HORA:</strong> ${o.date || ''}<br>
+          <strong>CLIENTE:</strong> ${o.customer || 'Cliente'}<br>
+          <strong>TELÉFONO:</strong> ${o.phone || ''}<br>
+          <strong>TIPO:</strong> ${o.deliveryType || ''}<br>
           ${o.deliveryType === 'Domicilio' ? `<strong>DIRECCIÓN:</strong> ${o.address}<br>` : ''}
           ${paymentTicketTxt}
           ${o.notes ? `<div style="margin-top: 5px; padding: 4px; border: 1px solid #000; font-weight: bold;">⚠️ NOTA COCINA: ${o.notes}</div>` : ''}
@@ -1240,7 +1242,7 @@
           <div style="display: flex; justify-content: space-between;"><span>Subtotal Platos:</span><span>$${(o.subtotal || 0).toLocaleString('es-CL')}</span></div>
           <div style="display: flex; justify-content: space-between;"><span>Despacho:</span><span>$${(o.deliveryCost || 0).toLocaleString('es-CL')}</span></div>
           <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin-top: 4px; border-top: 1px solid #000; padding-top: 2px;">
-            <span>TOTAL:</span><span>$${o.grandTotal.toLocaleString('es-CL')}</span>
+            <span>TOTAL:</span><span>$${(o.grandTotal || 0).toLocaleString('es-CL')}</span>
           </div>
         </div>
         <hr style="border-top: 2px solid #000; margin: 8px 0;">
