@@ -43,6 +43,9 @@
     <button onclick="switchTab('comandero')" id="tab-btn-comandero" class="tab-btn bg-amber-500 text-gray-950 font-black px-4 py-2 rounded-xl text-xs flex items-center gap-2 whitespace-nowrap shadow-md">
       👨‍🍳 Comandero Activo
     </button>
+    <button onclick="switchTab('entregados')" id="tab-btn-entregados" class="tab-btn bg-gray-800 text-gray-300 hover:bg-gray-700 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 whitespace-nowrap">
+      ✅ Pedidos Entregados
+    </button>
     <button onclick="switchTab('reportes')" id="tab-btn-reportes" class="tab-btn bg-gray-800 text-gray-300 hover:bg-gray-700 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 whitespace-nowrap">
       📊 Cuadre de Caja
     </button>
@@ -65,7 +68,18 @@
     <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="orders-container"></main>
   </section>
 
-  <!-- SECCIÓN 2: CUADRE DE CAJA Y REPORTES -->
+  <!-- SECCIÓN 2: PEDIDOS ENTREGADOS (HISTORIAL COMPLETO) -->
+  <section id="sec-entregados" class="space-y-4 hidden">
+    <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 flex justify-between items-center">
+      <div>
+        <h2 class="text-lg font-black text-white">✅ Pedidos Entregados y Finalizados</h2>
+        <p class="text-xs text-gray-400">Historial completo de comandas completadas.</p>
+      </div>
+    </div>
+    <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="completed-orders-container"></main>
+  </section>
+
+  <!-- SECCIÓN 3: CUADRE DE CAJA Y REPORTES -->
   <section id="sec-reportes" class="space-y-6 hidden">
     <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
@@ -117,7 +131,7 @@
     </div>
   </section>
 
-  <!-- SECCIÓN 3: GESTIÓN DE MENÚ / PRECIOS / STOCK -->
+  <!-- SECCIÓN 4: GESTIÓN DE MENÚ / PRECIOS / STOCK -->
   <section id="sec-menu" class="space-y-4 hidden">
     <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 flex justify-between items-center">
       <div>
@@ -136,21 +150,16 @@
         <button onclick="closeEditModal()" class="text-gray-400 font-bold text-2xl">✕</button>
       </div>
 
-      <!-- Ítems Actuales en el Pedido -->
       <div class="space-y-2">
         <label class="block text-xs font-bold text-amber-400 uppercase">📋 Productos en la Comanda Actual:</label>
         <div id="edit-items-container" class="space-y-2 max-h-40 overflow-y-auto p-1 bg-gray-950/50 rounded-xl"></div>
       </div>
 
-      <!-- Catálogo Visual con Imágenes para Agregar -->
       <div class="space-y-2 pt-2 border-t border-gray-800">
         <label class="block text-xs font-bold text-gray-400 uppercase">🍱 Toca un producto para agregar al pedido:</label>
-        <div id="visual-product-picker" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1 no-scrollbar">
-          <!-- Inyectado por JS con fotos -->
-        </div>
+        <div id="visual-product-picker" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1 no-scrollbar"></div>
       </div>
 
-      <!-- Resumen de Costos -->
       <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-1 text-xs">
         <div class="flex justify-between text-gray-400"><span>Subtotal Platos:</span><span id="edit-subtotal-val">$0</span></div>
         <div class="flex justify-between text-gray-400"><span>Costo Despacho:</span><span id="edit-delivery-val">$0</span></div>
@@ -214,6 +223,7 @@
 
       allOrders = data;
       renderLiveOrders();
+      renderCompletedOrders();
       renderReports();
     });
 
@@ -232,12 +242,17 @@
       });
 
       document.getElementById('sec-comandero').classList.add('hidden');
+      document.getElementById('sec-entregados').classList.add('hidden');
       document.getElementById('sec-reportes').classList.add('hidden');
       document.getElementById('sec-menu').classList.add('hidden');
 
       if (tab === 'comandero') {
         document.getElementById('tab-btn-comandero').classList.add('bg-amber-500', 'text-gray-950');
         document.getElementById('sec-comandero').classList.remove('hidden');
+      } else if (tab === 'entregados') {
+        document.getElementById('tab-btn-entregados').classList.add('bg-amber-500', 'text-gray-950');
+        document.getElementById('sec-entregados').classList.remove('hidden');
+        renderCompletedOrders();
       } else if (tab === 'reportes') {
         document.getElementById('tab-btn-reportes').classList.add('bg-amber-500', 'text-gray-950');
         document.getElementById('sec-reportes').classList.remove('hidden');
@@ -261,6 +276,7 @@
       return `⏱️ Lleva ${diffMin} min`;
     }
 
+    // Renderizar Pedidos Activos
     function renderLiveOrders() {
       const container = document.getElementById('orders-container');
       container.innerHTML = '';
@@ -336,7 +352,62 @@
       });
     }
 
-    // ✏️ LÓGICA DE EDICIÓN CON TARJETAS VISUALES DE PLATOS
+    // Renderizar Pestaña de Pedidos Entregados
+    function renderCompletedOrders() {
+      const container = document.getElementById('completed-orders-container');
+      container.innerHTML = '';
+
+      const ordersArray = Object.keys(allOrders).map(key => ({ id: key, ...allOrders[key] })).reverse();
+      const completedOrders = ordersArray.filter(o => o.status === 'Entregado');
+
+      if (completedOrders.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-16 font-bold">Aún no hay pedidos marcados como entregados. 🥢</div>`;
+        return;
+      }
+
+      completedOrders.forEach(order => {
+        let itemsHtml = order.items.map(i => `
+          <div class="flex justify-between text-xs py-1 border-b border-gray-800/60">
+            <span><strong class="text-amber-400">${i.qty}x</strong> ${i.name} <em class="text-[10px] text-gray-400">${i.detail || ''}</em></span>
+            <span class="font-bold">$${(i.price * i.qty).toLocaleString('es-CL')}</span>
+          </div>
+        `).join('');
+
+        container.innerHTML += `
+          <div class="bg-gray-900 rounded-2xl p-4 border border-gray-800 shadow-xl space-y-3 opacity-90">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-[10px] font-bold text-gray-500">HORA: ${order.date}</span>
+                <h3 class="text-base font-black text-white mt-0.5">${order.customer}</h3>
+                <p class="text-xs text-gray-400 font-bold">📞 ${order.phone}</p>
+              </div>
+              <span class="px-2 py-0.5 rounded-lg text-[11px] font-bold border bg-emerald-500/20 text-emerald-400 border-emerald-500/40">✅ ENTREGADO</span>
+            </div>
+
+            <div class="bg-gray-950 p-2.5 rounded-xl space-y-1 text-xs border border-gray-800/80">
+              <p class="font-bold text-gray-300">🛵 ${order.deliveryType} ${order.km ? `(~${order.km} KM)` : ''}</p>
+              <p class="text-gray-400 line-clamp-1">📍 ${order.address}</p>
+              <p class="font-bold text-emerald-400">💳 ${order.paymentMethod} ${order.changeInfo ? '| ' + order.changeInfo : ''}</p>
+            </div>
+
+            <div class="space-y-1 my-2">
+              ${itemsHtml}
+            </div>
+
+            <div class="flex justify-between items-center text-xs font-black pt-2 border-t border-gray-800">
+              <span>TOTAL COMANDA:</span>
+              <span class="text-emerald-400 text-base">$${order.grandTotal.toLocaleString('es-CL')}</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-1.5 pt-1">
+              <button onclick="printCustomerTicket('${order.id}')" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">🖨️ Reimprimir Ticket</button>
+              <button onclick="updateStatus('${order.id}', 'En Preparación')" class="bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">↩️ Reabrir Pedido</button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
     function openEditModal(orderId) {
       editingOrderId = orderId;
       const order = allOrders[orderId];
@@ -381,7 +452,6 @@
       calculateEditTotals();
     }
 
-    // Renderizado Visual de Productos con Imagen para seleccionar
     function renderVisualProductPicker() {
       const container = document.getElementById('visual-product-picker');
       container.innerHTML = '';
