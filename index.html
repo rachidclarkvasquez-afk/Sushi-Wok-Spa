@@ -74,7 +74,7 @@
     </div>
   </div>
 
-  <!-- Modal 2: Checkout Completo con Geolocalización Automática -->
+  <!-- Modal 2: Checkout Completo -->
   <div id="checkout-modal" class="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
     <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 shadow-2xl my-auto">
       <div class="flex justify-between items-center border-b pb-2">
@@ -162,15 +162,12 @@
 
   <script>
     const WHATSAPP_PHONE = "56932649489";
-
-    // Coordenadas fijas de tu local: Av. Ramón Picarte 3045, Valdivia
     const STORE_LAT = -39.8251;
     const STORE_LNG = -73.2355;
-
-    let calculatedKm = 1; // Por defecto 1 km si no activa ubicación
+    let calculatedKm = 1;
 
     const firebaseConfig = {
-      databaseURL: "https://sushi-wok-default-rtdb.firebaseio.com/"
+      databaseURL: "https://sushi-wok-89bee-default-rtdb.firebaseio.com/"
     };
     if (typeof firebase !== 'undefined' && firebaseConfig.databaseURL !== "") {
       firebase.initializeApp(firebaseConfig);
@@ -268,32 +265,25 @@
       document.getElementById('cart-total').innerText = '$' + subtotal.toLocaleString('es-CL');
     }
 
-    /* Geolocalización y cálculo de distancia */
     function detectUserLocation() {
       if (!navigator.geolocation) {
         alert("Tu navegador no soporta geolocalización.");
         return;
       }
-      alert("Obteniendo tu ubicación exacta...");
       navigator.geolocation.getCurrentPosition((position) => {
         const userLat = position.coords.latitude;
         const userLng = position.coords.longitude;
-
-        // Calcular distancia en KM usando la formula Haversine
-        const R = 6371; // Radio de la tierra en km
+        const R = 6371;
         const dLat = (userLat - STORE_LAT) * Math.PI / 180;
         const dLon = (userLng - STORE_LNG) * Math.PI / 180;
-        const a = 
-          Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(STORE_LAT * Math.PI / 180) * Math.cos(userLat * Math.PI / 180) * 
-          Math.sin(dLon/2) * Math.sin(dLon/2);
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(STORE_LAT * Math.PI / 180) * Math.cos(userLat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const distance = R * c; // Distancia en KM
+        const distance = R * c;
 
-        calculatedKm = Math.max(1, Math.ceil(distance)); // Mínimo 1 km
+        calculatedKm = Math.max(1, Math.ceil(distance));
         const cost = calculatedKm * 1000;
 
-        document.getElementById('calculated-km-labelinnerText' || 'calculated-km-label').innerText = `${calculatedKm} km ($${cost.toLocaleString('es-CL')})`;
+        document.getElementById('calculated-km-label').innerText = `${calculatedKm} km ($${cost.toLocaleString('es-CL')})`;
         document.getElementById('cust-address').value = `Ubicación GPS (${userLat.toFixed(4)}, ${userLng.toFixed(4)})`;
         calculateGrandTotal();
         alert(`¡Ubicación detectada! Distancia: ~${calculatedKm} km. Despacho: $${cost.toLocaleString('es-CL')}`);
