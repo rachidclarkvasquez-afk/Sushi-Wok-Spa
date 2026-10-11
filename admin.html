@@ -158,7 +158,7 @@
     </div>
   </section>
 
-  <!-- MODAL EDITAR COMANDA (INCLUYE CAMBIO RETIRO / DOMICILIO) -->
+  <!-- MODAL EDITAR COMANDA -->
   <div id="edit-order-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-4 hidden">
     <div class="bg-gray-900 w-full max-w-xl rounded-3xl p-5 border border-gray-800 space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-gray-800 pb-3">
@@ -166,7 +166,6 @@
         <button onclick="closeEditModal()" class="text-gray-400 font-bold text-2xl">✕</button>
       </div>
 
-      <!-- Cambio de Tipo de Entrega -->
       <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-2 text-xs">
         <label class="block font-bold text-amber-400 uppercase">🛵 Tipo de Entrega:</label>
         <select id="edit-delivery-type" onchange="toggleEditDeliveryFields()" class="w-full bg-gray-900 border border-gray-700 text-white font-bold p-2 rounded-xl focus:outline-amber-500">
@@ -406,7 +405,8 @@
 
         let itemsHtml = order.items.map(i => `
           <div class="flex justify-between text-xs py-1 border-b border-gray-800/60">
-            <span><strong class="text-amber-400">${i.qty}x</strong>${i.name} <em class="text-[10px] text-gray-400">${i.detail \vert{}\vert{} ''}</em></span>             <span class="font-bold">$${(i.price * i.qty).toLocaleString('es-CL')}</span>
+            <span><strong class="text-amber-400">${i.qty}x</strong> ${i.name} <em class="text-[10px] text-gray-400">${i.detail || ''}</em></span>
+            <span class="font-bold">$${(i.price * i.qty).toLocaleString('es-CL')}</span>
           </div>
         `).join('');
 
@@ -425,29 +425,31 @@
             </div>
 
             <div class="bg-gray-950 p-2.5 rounded-xl space-y-1 text-xs border border-gray-800/80">
-              <p class="font-bold text-gray-300">🛵 ${order.deliveryType}${order.km ? `(~${order.km} KM)` : ''}</p>
+              <p class="font-bold text-gray-300">🛵 ${order.deliveryType} ${order.km ? `(~${order.km} KM)` : ''}</p>
               <p class="text-gray-400 line-clamp-1">📍 ${order.address}</p>
-              <p class="font-bold text-emerald-400">💳 ${order.paymentMethod}${order.changeInfo ? '| ' + order.changeInfo : ''}</p>
+              <p class="font-bold text-emerald-400">💳 ${order.paymentMethod} ${order.changeInfo ? '| ' + order.changeInfo : ''}</p>
             </div>
 
             <div class="space-y-1 my-2">
-              ${itemsHtml}             </div>              <div class="flex justify-between items-center text-xs font-black pt-2 border-t border-gray-800">               <span>TOTAL COMANDA:</span>               <span class="text-emerald-400 text-base">$${order.grandTotal.toLocaleString('es-CL')}</span>
+              ${itemsHtml}
             </div>
 
-            <!-- Botones de Impresión -->
+            <div class="flex justify-between items-center text-xs font-black pt-2 border-t border-gray-800">
+              <span>TOTAL COMANDA:</span>
+              <span class="text-emerald-400 text-base">$${order.grandTotal.toLocaleString('es-CL')}</span>
+            </div>
+
             <div class="grid grid-cols-2 gap-1.5 pt-1">
               <button onclick="printKitchenTicket('${order.id}')" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1 shadow-sm">🖨️ Ticket Cocina</button>
               <button onclick="printCustomerTicket('${order.id}')" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">🖨️ Ticket Cliente</button>
             </div>
 
-            <!-- Botones de Cambio de Estado en Cocina -->
             <div class="grid grid-cols-3 gap-1 pt-1">
               <button onclick="updateStatus('${order.id}', 'En Preparación')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] py-2 rounded-lg">👨‍🍳 Cocina</button>
               <button onclick="updateStatus('${order.id}', 'En Camino')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] py-2 rounded-lg">🛵 Reparto</button>
               <button onclick="updateStatus('${order.id}', 'Entregado')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] py-2 rounded-lg">✅ Entregado</button>
             </div>
 
-            <!-- Menú Desplegable Único para Comunicar al Cliente por WhatsApp -->
             <div class="pt-1 border-t border-gray-800/60 flex gap-2">
               <select onchange="handleCustomerCommunication('${order.id}', this.value); this.value='';" class="w-full bg-emerald-950 hover:bg-emerald-900 border border-emerald-600/40 text-emerald-300 font-bold text-xs py-2 px-3 rounded-xl focus:outline-none cursor-pointer">
                 <option value="" disabled selected>💬 Comunicar al Cliente (WhatsApp)</option>
@@ -462,7 +464,6 @@
       });
     }
 
-    // Lógica para enviar mensajes por WhatsApp según la opción seleccionada
     function handleCustomerCommunication(orderId, action) {
       const o = allOrders[orderId];
       if (!o) return;
@@ -515,7 +516,8 @@
       completedOrders.forEach(order => {
         let itemsHtml = order.items.map(i => `
           <div class="flex justify-between text-xs py-1 border-b border-gray-800/60">
-            <span><strong class="text-amber-400">${i.qty}x</strong>${i.name} <em class="text-[10px] text-gray-400">${i.detail \vert{}\vert{} ''}</em></span>             <span class="font-bold">$${(i.price * i.qty).toLocaleString('es-CL')}</span>
+            <span><strong class="text-amber-400">${i.qty}x</strong> ${i.name} <em class="text-[10px] text-gray-400">${i.detail || ''}</em></span>
+            <span class="font-bold">$${(i.price * i.qty).toLocaleString('es-CL')}</span>
           </div>
         `).join('');
 
@@ -531,13 +533,18 @@
             </div>
 
             <div class="bg-gray-950 p-2.5 rounded-xl space-y-1 text-xs border border-gray-800/80">
-              <p class="font-bold text-gray-300">🛵 ${order.deliveryType}${order.km ? `(~${order.km} KM)` : ''}</p>
+              <p class="font-bold text-gray-300">🛵 ${order.deliveryType} ${order.km ? `(~${order.km} KM)` : ''}</p>
               <p class="text-gray-400 line-clamp-1">📍 ${order.address}</p>
-              <p class="font-bold text-emerald-400">💳 ${order.paymentMethod}${order.changeInfo ? '| ' + order.changeInfo : ''}</p>
+              <p class="font-bold text-emerald-400">💳 ${order.paymentMethod} ${order.changeInfo ? '| ' + order.changeInfo : ''}</p>
             </div>
 
             <div class="space-y-1 my-2">
-              ${itemsHtml}             </div>              <div class="flex justify-between items-center text-xs font-black pt-2 border-t border-gray-800">               <span>TOTAL COMANDA:</span>               <span class="text-emerald-400 text-base">$${order.grandTotal.toLocaleString('es-CL')}</span>
+              ${itemsHtml}
+            </div>
+
+            <div class="flex justify-between items-center text-xs font-black pt-2 border-t border-gray-800">
+              <span>TOTAL COMANDA:</span>
+              <span class="text-emerald-400 text-base">$${order.grandTotal.toLocaleString('es-CL')}</span>
             </div>
 
             <div class="grid grid-cols-2 gap-1.5 pt-1">
@@ -549,7 +556,6 @@
       });
     }
 
-    // ✏️ EDICIÓN CON CAMBIO DE RETIRO / DOMICILIO
     function openEditModal(orderId) {
       editingOrderId = orderId;
       const order = allOrders[orderId];
@@ -558,7 +564,6 @@
       document.getElementById('edit-modal-client').innerText = order.customer;
       editingCartItems = JSON.parse(JSON.stringify(order.items || []));
 
-      // Cargar Tipo de Entrega
       const delTypeSelect = document.getElementById('edit-delivery-type');
       delTypeSelect.value = order.deliveryType || 'Retiro en Local';
       
@@ -623,7 +628,8 @@
           <div onclick="addVisualItemToOrder(${p.id})" class="flex items-center gap-2.5 p-2 bg-gray-950 hover:bg-gray-800/80 border border-gray-800 rounded-xl cursor-pointer transition-all active:scale-95">
             <img src="${p.img}" class="w-12 h-12 rounded-lg object-cover bg-gray-800">
             <div class="flex-1 min-w-0">
-              <h5 class="text-xs font-bold text-white truncate">${p.name}</h5>               <p class="text-[11px] font-black text-amber-400">$${p.price.toLocaleString('es-CL')}</p>
+              <h5 class="text-xs font-bold text-white truncate">${p.name}</h5>
+              <p class="text-[11px] font-black text-amber-400">$${p.price.toLocaleString('es-CL')}</p>
             </div>
             <button class="bg-amber-500 text-gray-950 font-black text-xs px-2.5 py-1 rounded-lg hover:bg-amber-400">+ Agregar</button>
           </div>
@@ -690,7 +696,6 @@
       alert("¡Comanda actualizada correctamente!");
     }
 
-    // ➕ PEDIDO MANUAL
     function openNewManualOrderModal() {
       manualCartItems = [];
       document.getElementById('manual-cust-name').value = "Cliente Mesón";
@@ -713,7 +718,8 @@
           <div onclick="addManualItem(${p.id})" class="flex items-center gap-2 p-1.5 bg-gray-950 hover:bg-gray-800 border border-gray-800 rounded-xl cursor-pointer">
             <img src="${p.img}" class="w-10 h-10 rounded-lg object-cover">
             <div class="flex-1 min-w-0">
-              <h5 class="text-[11px] font-bold text-white truncate">${p.name}</h5>               <p class="text-[10px] font-black text-amber-400">$${p.price.toLocaleString('es-CL')}</p>
+              <h5 class="text-[11px] font-bold text-white truncate">${p.name}</h5>
+              <p class="text-[10px] font-black text-amber-400">$${p.price.toLocaleString('es-CL')}</p>
             </div>
             <button class="bg-amber-500 text-gray-950 font-black text-[10px] px-2 py-0.5 rounded">+ Agregar</button>
           </div>
@@ -740,4 +746,242 @@
       manualCartItems.forEach((item, idx) => {
         total += (item.price * item.qty);
         container.innerHTML += `
-          <div class="flex justify-between items-
+          <div class="flex justify-between items-center bg-gray-950 p-2 rounded-xl border border-gray-800 text-xs">
+            <span class="font-bold text-gray-200">${item.qty}x ${item.name}</span>
+            <div class="flex items-center gap-2">
+              <button onclick="changeManualQty(${idx}, -1)" class="w-5 h-5 bg-gray-800 text-white rounded font-bold">-</button>
+              <span class="font-bold text-amber-400">${item.qty}</span>
+              <button onclick="changeManualQty(${idx}, 1)" class="w-5 h-5 bg-gray-800 text-white rounded font-bold">+</button>
+            </div>
+          </div>
+        `;
+      });
+
+      document.getElementById('manual-total-val').innerText = '$' + total.toLocaleString('es-CL');
+    }
+
+    function changeManualQty(idx, delta) {
+      manualCartItems[idx].qty += delta;
+      if (manualCartItems[idx].qty <= 0) manualCartItems.splice(idx, 1);
+      renderManualItems();
+    }
+
+    function submitManualOrder() {
+      if (manualCartItems.length === 0) {
+        alert("Agrega al menos un producto.");
+        return;
+      }
+
+      const name = document.getElementById('manual-cust-name').value.trim() || "Cliente Mesón";
+      const phone = document.getElementById('manual-cust-phone').value.trim() || "+56900000000";
+      const delType = document.getElementById('manual-delivery-type').value;
+      const payment = document.getElementById('manual-payment').value;
+
+      const total = manualCartItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+      const orderData = {
+        timestamp: Date.now(),
+        date: new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+        customer: name,
+        phone: phone,
+        deliveryType: delType,
+        address: delType === 'Domicilio' ? "Dirección ingresada en mesón" : "Retiro en Local (Av. Picarte 3045)",
+        km: 0,
+        paymentMethod: payment,
+        items: manualCartItems,
+        subtotal: total,
+        deliveryCost: 0,
+        grandTotal: total,
+        status: 'En Preparación'
+      };
+
+      db.ref('pedidos').push(orderData);
+      closeManualOrderModal();
+      alert("¡Pedido ingresado correctamente y enviado a cocina!");
+    }
+
+    function updateStatus(orderId, newStatus) {
+      db.ref(`pedidos/${orderId}`).update({ status: newStatus });
+    }
+
+    function renderAdminMenu() {
+      const container = document.getElementById('admin-menu-list');
+      container.innerHTML = '';
+
+      menuProducts.forEach((p, idx) => {
+        const isAvail = p.available !== false;
+        container.innerHTML += `
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-gray-950 rounded-xl border border-gray-800 gap-3">
+            <div class="flex items-center gap-3">
+              <img src="${p.img}" class="w-12 h-12 rounded-lg object-cover bg-gray-800">
+              <div>
+                <h4 class="font-bold text-white text-sm">${p.name}</h4>
+                <p class="text-[10px] text-gray-400 capitalize">Categoría: ${p.category}</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-gray-800 pt-2 sm:pt-0">
+              <div class="flex items-center gap-1">
+                <span class="text-xs text-gray-400">$</span>
+                <input type="number" value="${p.price}" onchange="updateProductPrice(${idx}, this.value)" class="w-20 bg-gray-900 border border-gray-700 text-amber-400 font-bold text-xs p-1.5 rounded-lg text-right">
+              </div>
+
+              <button onclick="toggleProductStock(${idx})" class="px-3 py-1.5 rounded-lg font-bold text-xs ${isAvail ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}">
+                ${isAvail ? '🟢 Disponible' : '🔴 Agotado'}
+              </button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function toggleProductStock(idx) {
+      const current = menuProducts[idx].available !== false;
+      menuProducts[idx].available = !current;
+      db.ref('menu').set(menuProducts);
+    }
+
+    function updateProductPrice(idx, newPrice) {
+      menuProducts[idx].price = parseInt(newPrice) || 0;
+      db.ref('menu').set(menuProducts);
+    }
+
+    function printKitchenTicket(orderId) {
+      const o = allOrders[orderId];
+      if (!o) return;
+      let itemsTxt = o.items.map(i => `
+        <div style="font-size: 16px; font-weight: bold; margin-bottom: 6px;">
+          ${i.qty}x ${i.name}<br>
+          <span style="font-size: 13px; font-style: italic; font-weight: normal;">${i.detail || ''}</span>
+        </div>
+      `).join('<hr style="border-top: 1px dashed #ccc; margin: 4px 0;">');
+
+      document.getElementById('print-area').innerHTML = `
+        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 8px;">
+          <h2 style="margin: 0; font-size: 18px; font-weight: bold;">*** COMANDA COCINA ***</h2>
+          <p style="margin: 2px 0; font-size: 12px;">HORA: ${o.date} | TIPO: ${o.deliveryType.toUpperCase()}</p>
+        </div>
+        <div style="margin-bottom: 8px; font-size: 13px;">
+          <strong>CLIENTE:</strong> ${o.customer}<br>
+          <strong>TEL:</strong> ${o.phone}
+        </div>
+        <hr style="border-top: 2px solid #000; margin: 6px 0;">
+        <div>${itemsTxt}</div>
+        <hr style="border-top: 2px solid #000; margin: 8px 0;">
+        <p style="text-align: center; font-size: 11px; margin: 0;">-- SUSHI & WOK COCINA --</p>
+      `;
+      window.print();
+    }
+
+    function printCustomerTicket(orderId) {
+      const o = allOrders[orderId];
+      if (!o) return;
+      let itemsTxt = o.items.map(i => `
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+          <span>${i.qty}x ${i.name} ${i.detail || ''}</span>
+          <span>$${(i.price * i.qty).toLocaleString('es-CL')}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('print-area').innerHTML = `
+        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 8px;">
+          <h2 style="margin: 0; font-size: 18px; font-weight: bold;">SUSHI & WOK</h2>
+          <p style="margin: 2px 0; font-size: 10px;">Av. Ramón Picarte 3045, Valdivia</p>
+          <p style="margin: 0; font-size: 11px; font-weight: bold;">TICKET DE ENTREGA</p>
+        </div>
+        <div style="margin-bottom: 8px; font-size: 11px;">
+          <strong>HORA:</strong> ${o.date}<br>
+          <strong>CLIENTE:</strong> ${o.customer}<br>
+          <strong>TELÉFONO:</strong> ${o.phone}<br>
+          <strong>TIPO:</strong> ${o.deliveryType}<br>
+          ${o.deliveryType === 'Domicilio' ? `<strong>DIRECCIÓN:</strong> ${o.address}<br>` : ''}
+          <strong>MEDIO DE PAGO:</strong> ${o.paymentMethod}<br>
+          ${o.changeInfo ? `<strong>PAGO/VUELTO:</strong> ${o.changeInfo}<br>` : ''}
+        </div>
+        <hr style="border-top: 1px dashed #000; margin: 6px 0;">
+        <div>${itemsTxt}</div>
+        <hr style="border-top: 1px dashed #000; margin: 6px 0;">
+        <div style="font-size: 11px;">
+          <div style="display: flex; justify-content: space-between;"><span>Subtotal Platos:</span><span>$${(o.subtotal || 0).toLocaleString('es-CL')}</span></div>
+          <div style="display: flex; justify-content: space-between;"><span>Despacho:</span><span>$${(o.deliveryCost || 0).toLocaleString('es-CL')}</span></div>
+          <div style="display: flex; justify-content: space-system; font-size: 14px; font-weight: bold; margin-top: 4px; border-t: 1px solid #000; padding-top: 2px;">
+            <span>TOTAL:</span><span>$${o.grandTotal.toLocaleString('es-CL')}</span>
+          </div>
+        </div>
+        <hr style="border-top: 2px solid #000; margin: 8px 0;">
+        <p style="text-align: center; font-size: 11px; margin: 0;">¡Muchas gracias por su preferencia! 🥢</p>
+      `;
+      window.print();
+    }
+
+    function renderReports() {
+      const selectedDate = document.getElementById('report-date-picker').value;
+      const ordersArray = Object.keys(allOrders).map(key => ({ id: key, ...allOrders[key] }));
+
+      const dayOrders = ordersArray.filter(o => {
+        if (!o.timestamp) return false;
+        const orderDateStr = new Date(o.timestamp).toISOString().split('T')[0];
+        return orderDateStr === selectedDate && o.status === 'Entregado';
+      });
+
+      let totalSales = 0, totalCash = 0, totalTransfers = 0, totalCard = 0, deliveryCount = 0, totalDeliveryCost = 0;
+      let productCounts = {};
+
+      dayOrders.forEach(o => {
+        totalSales += (o.grandTotal || 0);
+
+        if (o.paymentMethod === 'Efectivo') totalCash += (o.grandTotal || 0);
+        else if (o.paymentMethod === 'Transferencia') totalTransfers += (o.grandTotal || 0);
+        else if (o.paymentMethod === 'Tarjeta') totalCard += (o.grandTotal || 0);
+
+        if (o.deliveryType === 'Domicilio') {
+          deliveryCount++;
+          totalDeliveryCost += (o.deliveryCost || 0);
+        }
+
+        if (o.items && Array.isArray(o.items)) {
+          o.items.forEach(item => {
+            if (!productCounts[item.name]) productCounts[item.name] = { qty: 0, total: 0 };
+            productCounts[item.name].qty += item.qty;
+            productCounts[item.name].total += (item.price * item.qty);
+          });
+        }
+      });
+
+      document.getElementById('stat-total-sales').innerText = '$' + totalSales.toLocaleString('es-CL');
+      document.getElementById('stat-order-count').innerText = `${dayOrders.length} pedidos entregados`;
+
+      document.getElementById('stat-cash').innerText = '$' + totalCash.toLocaleString('es-CL');
+      document.getElementById('stat-transfers').innerText = '$' + totalTransfers.toLocaleString('es-CL');
+      document.getElementById('stat-card').innerText = '$' + totalCard.toLocaleString('es-CL');
+
+      document.getElementById('stat-delivery-count').innerText = `${deliveryCount} Envíos`;
+      document.getElementById('stat-delivery-total').innerText = '$' + totalDeliveryCost.toLocaleString('es-CL');
+
+      const topContainer = document.getElementById('top-products-container');
+      topContainer.innerHTML = '';
+
+      const sortedProducts = Object.keys(productCounts)
+        .map(name => ({ name, ...productCounts[name] }))
+        .sort((a, b) => b.qty - a.qty);
+
+      if (sortedProducts.length === 0) {
+        topContainer.innerHTML = `<p class="text-gray-500 italic">No hay registros de platos entregados en esta fecha.</p>`;
+        return;
+      }
+
+      sortedProducts.forEach((p, idx) => {
+        topContainer.innerHTML += `
+          <div class="flex justify-between items-center p-2.5 bg-gray-950 rounded-xl border border-gray-800">
+            <span class="font-bold text-gray-300"><strong class="text-amber-400">#${idx + 1}</strong> ${p.name}</span>
+            <div class="text-right">
+              <span class="font-extrabold text-amber-400 block">${p.qty} un.</span>
+              <span class="text-[10px] text-gray-500 font-semibold">$${p.total.toLocaleString('es-CL')}</span>
+            </div>
+          </div>
+        `;
+      });
+    }
+  </script>
+</body>
+</html>
