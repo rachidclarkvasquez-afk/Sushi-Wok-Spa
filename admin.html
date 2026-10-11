@@ -11,25 +11,10 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <style>
-    /* Estilos exclusivos para Impresión Térmica (80mm / 58mm) */
     @media print {
-      body * {
-        visibility: hidden;
-      }
-      #print-area, #print-area * {
-        visibility: visible;
-      }
-      #print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        max-width: 80mm;
-        font-family: monospace;
-        color: #000;
-        background: #fff;
-        padding: 5px;
-      }
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area { position: absolute; left: 0; top: 0; width: 100%; max-width: 80mm; font-family: monospace; color: #000; background: #fff; padding: 5px; }
     }
   </style>
 </head>
@@ -54,13 +39,15 @@
       👨‍🍳 Comandero Activo
     </button>
     <button onclick="switchTab('reportes')" id="tab-btn-reportes" class="tab-btn bg-gray-800 text-gray-300 hover:bg-gray-700 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 whitespace-nowrap">
-      📊 Cuadre de Caja y Reportes
+      📊 Cuadre de Caja
+    </button>
+    <button onclick="switchTab('menu')" id="tab-btn-menu" class="tab-btn bg-gray-800 text-gray-300 hover:bg-gray-700 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 whitespace-nowrap">
+      ⚙️ Menú / Precios / Stock
     </button>
   </div>
 
   <!-- SECCIÓN 1: COMANDERO EN TIEMPO REAL -->
   <section id="sec-comandero" class="space-y-4">
-    <!-- Filtros Rápidos -->
     <div class="flex flex-wrap gap-2 items-center bg-gray-900 p-3 rounded-xl border border-gray-800 text-xs">
       <span class="font-bold text-gray-400 mr-2">Filtrar Estado:</span>
       <button onclick="filterLiveOrders('Todos')" class="btn-f-live bg-amber-500 text-gray-950 px-3 py-1 rounded-lg font-bold">Todos</button>
@@ -68,11 +55,7 @@
       <button onclick="filterLiveOrders('En Preparación')" class="btn-f-live bg-gray-800 text-gray-300 px-3 py-1 rounded-lg font-bold">En Cocina</button>
       <button onclick="filterLiveOrders('En Camino')" class="btn-f-live bg-gray-800 text-gray-300 px-3 py-1 rounded-lg font-bold">En Reparto</button>
     </div>
-
-    <!-- Grid de Comandas -->
-    <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="orders-container">
-      <!-- Inyectado por JS -->
-    </main>
+    <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="orders-container"></main>
   </section>
 
   <!-- SECCIÓN 2: CUADRE DE CAJA Y REPORTES -->
@@ -127,7 +110,20 @@
     </div>
   </section>
 
-  <!-- ÁREA OCULTA DE IMPRESIÓN (Para impresoras térmicas de 80mm/58mm) -->
+  <!-- SECCIÓN 3: GESTIÓN DE MENÚ / PRECIOS / STOCK -->
+  <section id="sec-menu" class="space-y-4 hidden">
+    <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 flex justify-between items-center">
+      <div>
+        <h2 class="text-lg font-black text-white">⚙️ Administración de Productos y Precios</h2>
+        <p class="text-xs text-gray-400">Pausa productos agotados o cambia sus precios en tiempo real.</p>
+      </div>
+    </div>
+
+    <div class="bg-gray-900 rounded-2xl p-4 border border-gray-800 space-y-3" id="admin-menu-list">
+      <!-- Inyectado por JS -->
+    </div>
+  </section>
+
   <div id="print-area"></div>
 
   <script>
@@ -139,13 +135,24 @@
 
     let allOrders = {};
     let currentLiveFilter = 'Todos';
+    let menuProducts = [];
 
     document.getElementById('report-date-picker').value = new Date().toISOString().split('T')[0];
 
+    // Escuchar Pedidos
     db.ref('pedidos').on('value', (snapshot) => {
       allOrders = snapshot.val() || {};
       renderLiveOrders();
       renderReports();
+    });
+
+    // Escuchar Menú
+    db.ref('menu').on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        menuProducts = Array.isArray(data) ? data : Object.values(data);
+        renderAdminMenu();
+      }
     });
 
     function switchTab(tab) {
@@ -154,15 +161,21 @@
         btn.classList.add('bg-gray-800', 'text-gray-300');
       });
 
+      document.getElementById('sec-comandero').classList.add('hidden');
+      document.getElementById('sec-reportes').classList.add('hidden');
+      document.getElementById('sec-menu').classList.add('hidden');
+
       if (tab === 'comandero') {
         document.getElementById('tab-btn-comandero').classList.add('bg-amber-500', 'text-gray-950');
         document.getElementById('sec-comandero').classList.remove('hidden');
-        document.getElementById('sec-reportes').classList.add('hidden');
-      } else {
+      } else if (tab === 'reportes') {
         document.getElementById('tab-btn-reportes').classList.add('bg-amber-500', 'text-gray-950');
         document.getElementById('sec-reportes').classList.remove('hidden');
-        document.getElementById('sec-comandero').classList.add('hidden');
         renderReports();
+      } else if (tab === 'menu') {
+        document.getElementById('tab-btn-menu').classList.add('bg-amber-500', 'text-gray-950');
+        document.getElementById('sec-menu').classList.remove('hidden');
+        renderAdminMenu();
       }
     }
 
@@ -222,31 +235,20 @@
               <span class="text-emerald-400 text-base">$${order.grandTotal.toLocaleString('es-CL')}</span>
             </div>
 
-            <!-- Botones de Impresión de Tickets -->
             <div class="grid grid-cols-2 gap-1.5 pt-1">
-              <button onclick="printKitchenTicket('${order.id}')" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1 shadow-sm">
-                🖨️ Ticket Cocina
-              </button>
-              <button onclick="printCustomerTicket('${order.id}')" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">
-                🖨️ Ticket Cliente
-              </button>
+              <button onclick="printKitchenTicket('${order.id}')" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1 shadow-sm">🖨️ Ticket Cocina</button>
+              <button onclick="printCustomerTicket('${order.id}')" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">🖨️ Ticket Cliente</button>
             </div>
 
-            <!-- Acciones de Estado -->
             <div class="grid grid-cols-3 gap-1 pt-1">
               <button onclick="updateStatus('${order.id}', 'En Preparación')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] py-2 rounded-lg">👨‍🍳 Cocina</button>
               <button onclick="updateStatus('${order.id}', 'En Camino')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] py-2 rounded-lg">🛵 Reparto</button>
               <button onclick="updateStatus('${order.id}', 'Entregado')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] py-2 rounded-lg">✅ Entregado</button>
             </div>
 
-            <!-- Botones WhatsApp -->
             <div class="grid grid-cols-2 gap-1.5 pt-1 border-t border-gray-800/60">
-              <button onclick="sendCustomerWsp('${order.id}')" class="bg-emerald-950 hover:bg-emerald-900 border border-emerald-600/40 text-emerald-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">
-                💬 Avisar Cliente
-              </button>
-              <button onclick="sendDriverWsp('${order.id}')" class="bg-amber-950 hover:bg-amber-900 border border-amber-600/40 text-amber-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">
-                🛵 Enviar Repartidor
-              </button>
+              <button onclick="sendCustomerWsp('${order.id}')" class="bg-emerald-950 hover:bg-emerald-900 border border-emerald-600/40 text-emerald-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">💬 Avisar Cliente</button>
+              <button onclick="sendDriverWsp('${order.id}')" class="bg-amber-950 hover:bg-amber-900 border border-amber-600/40 text-amber-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">🛵 Enviar Repartidor</button>
             </div>
           </div>
         `;
@@ -257,11 +259,54 @@
       db.ref(`pedidos/${orderId}`).update({ status: newStatus });
     }
 
-    // 🖨️ IMPRIMIR TICKET PARA COCINA (Sin Precios)
+    // ⚙️ GESTIÓN DE PRODUCTOS / DISPONIBILIDAD / PRECIOS
+    function renderAdminMenu() {
+      const container = document.getElementById('admin-menu-list');
+      container.innerHTML = '';
+
+      menuProducts.forEach((p, idx) => {
+        const isAvail = p.available !== false;
+        container.innerHTML += `
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-gray-950 rounded-xl border border-gray-800 gap-3">
+            <div class="flex items-center gap-3">
+              <img src="${p.img}" class="w-12 h-12 rounded-lg object-cover bg-gray-800">
+              <div>
+                <h4 class="font-bold text-white text-sm">${p.name}</h4>
+                <p class="text-[10px] text-gray-400 capitalize">Categoría: ${p.category}</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-gray-800 pt-2 sm:pt-0">
+              <!-- Cambiar Precio -->
+              <div class="flex items-center gap-1">
+                <span class="text-xs text-gray-400">$</span>
+                <input type="number" value="${p.price}" onchange="updateProductPrice(${idx}, this.value)" class="w-20 bg-gray-900 border border-gray-700 text-amber-400 font-bold text-xs p-1.5 rounded-lg text-right">
+              </div>
+
+              <!-- Toggle Disponibilidad -->
+              <button onclick="toggleProductStock(${idx})" class="px-3 py-1.5 rounded-lg font-bold text-xs ${isAvail ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}">
+                ${isAvail ? '🟢 Disponible' : '🔴 Agotado'}
+              </button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function toggleProductStock(idx) {
+      const current = menuProducts[idx].available !== false;
+      menuProducts[idx].available = !current;
+      db.ref('menu').set(menuProducts);
+    }
+
+    function updateProductPrice(idx, newPrice) {
+      menuProducts[idx].price = parseInt(newPrice) || 0;
+      db.ref('menu').set(menuProducts);
+    }
+
     function printKitchenTicket(orderId) {
       const o = allOrders[orderId];
       if (!o) return;
-
       let itemsTxt = o.items.map(i => `
         <div style="font-size: 16px; font-weight: bold; margin-bottom: 6px;">
           ${i.qty}x ${i.name}<br>
@@ -269,8 +314,7 @@
         </div>
       `).join('<hr style="border-top: 1px dashed #ccc; margin: 4px 0;">');
 
-      const printArea = document.getElementById('print-area');
-      printArea.innerHTML = `
+      document.getElementById('print-area').innerHTML = `
         <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 8px;">
           <h2 style="margin: 0; font-size: 18px; font-weight: bold;">*** COMANDA COCINA ***</h2>
           <p style="margin: 2px 0; font-size: 12px;">HORA: ${o.date} | TIPO: ${o.deliveryType.toUpperCase()}</p>
@@ -284,15 +328,12 @@
         <hr style="border-top: 2px solid #000; margin: 8px 0;">
         <p style="text-align: center; font-size: 11px; margin: 0;">-- SUSHI & WOK COCINA --</p>
       `;
-
       window.print();
     }
 
-    // 🖨️ IMPRIMIR TICKET PARA CLIENTE (Completo con cobro y dirección)
     function printCustomerTicket(orderId) {
       const o = allOrders[orderId];
       if (!o) return;
-
       let itemsTxt = o.items.map(i => `
         <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
           <span>${i.qty}x ${i.name} ${i.detail || ''}</span>
@@ -300,8 +341,7 @@
         </div>
       `).join('');
 
-      const printArea = document.getElementById('print-area');
-      printArea.innerHTML = `
+      document.getElementById('print-area').innerHTML = `
         <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 8px;">
           <h2 style="margin: 0; font-size: 18px; font-weight: bold;">SUSHI & WOK</h2>
           <p style="margin: 2px 0; font-size: 10px;">Av. Ramón Picarte 3045, Valdivia</p>
@@ -329,7 +369,6 @@
         <hr style="border-top: 2px solid #000; margin: 8px 0;">
         <p style="text-align: center; font-size: 11px; margin: 0;">¡Muchas gracias por su preferencia! 🥢</p>
       `;
-
       window.print();
     }
 
@@ -341,9 +380,7 @@
 
       let msg = `Hola *${o.customer}*! 👋 Saludos de *SUSHI & WOK* 🥢.\n\n`;
       msg += `Tu pedido se encuentra actualizando su estado a: *${o.status.toUpperCase()}*.\n`;
-      if (o.deliveryType === 'Domicilio') {
-        msg += `🛵 Dirección de entrega: ${o.address}\n`;
-      }
+      if (o.deliveryType === 'Domicilio') msg += `🛵 Dirección de entrega: ${o.address}\n`;
       msg += `💰 Total a pagar: *$${o.grandTotal.toLocaleString('es-CL')}* (${o.paymentMethod})\n\n`;
       msg += `¡Muchas gracias por elegirnos! 🍣`;
 
