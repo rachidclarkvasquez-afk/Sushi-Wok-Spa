@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SUSHI & WOK - Menú Digital</title>
+  <title>SUSHI & WOK - Menú Online</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Firebase Scripts -->
@@ -15,297 +15,128 @@
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-gray-50 font-sans pb-36">
+<body class="bg-gray-950 text-gray-100 min-h-screen font-sans pb-24">
 
-  <!-- Header con Estado de Atención -->
-  <header class="bg-gray-900 text-white p-5 text-center shadow-lg sticky top-0 z-40">
-    <div class="flex justify-center items-center gap-2">
-      <span class="text-2xl">🥢</span>
-      <h1 class="text-2xl font-black tracking-wide uppercase text-amber-400">SUSHI & WOK</h1>
-    </div>
-    <p class="text-xs text-gray-300 mt-1">Av. Ramón Picarte 3045, Valdivia</p>
-    
-    <!-- Banner de Horario -->
-    <div id="store-status-banner" class="mt-2 inline-block px-3 py-1 rounded-full text-[11px] font-bold">
-      <!-- Cargado dinámicamente -->
+  <!-- ENCABEZADO -->
+  <header class="bg-gray-900/90 backdrop-blur border-b border-gray-800 sticky top-0 z-40 p-4 shadow-xl">
+    <div class="max-w-4xl mx-auto flex justify-between items-center">
+      <div>
+        <h1 class="text-xl sm:text-2xl font-black text-amber-400 flex items-center gap-2">
+          🥢 SUSHI & WOK
+        </h1>
+        <p class="text-[11px] text-gray-400">Av. Ramón Picarte 3045, Valdivia</p>
+      </div>
+      <div id="schedule-badge" class="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+        🟢 Abierto
+      </div>
     </div>
   </header>
 
-  <!-- Categorías -->
-  <div class="bg-white border-b border-gray-200 sticky top-[95px] z-30 px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar shadow-xs">
-    <button onclick="filterCategory('all')" class="cat-btn px-4 py-1.5 rounded-full text-xs font-bold bg-amber-500 text-white whitespace-nowrap">🔥 Todo</button>
-    <button onclick="filterCategory('entradas')" class="cat-btn px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-700 whitespace-nowrap">🥟 Entradas</button>
-    <button onclick="filterCategory('wok')" class="cat-btn px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-700 whitespace-nowrap">🥡 Wok</button>
-  </div>
+  <!-- REPRODUCTOR / BUSCADOR / CATEGORÍAS -->
+  <main class="max-w-4xl mx-auto p-4 space-y-6">
 
-  <!-- Contenedor del Menú -->
-  <main class="max-w-md mx-auto p-4 space-y-4" id="menu-container">
-    <!-- Carga de productos -->
+    <!-- BUSCADOR -->
+    <div class="relative">
+      <input type="text" id="client-search" oninput="filterMenu()" placeholder="🔍 Buscar tu plato favorito (ej: rolls, wok, tempura)..." 
+        class="w-full bg-gray-900 border border-gray-800 text-white placeholder-gray-500 text-xs sm:text-sm p-3.5 rounded-2xl focus:outline-none focus:border-amber-500 transition-all shadow-inner">
+    </div>
+
+    <!-- CATEGORÍAS -->
+    <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1" id="category-bar">
+      <button onclick="selectCategory('Todas')" class="cat-btn bg-amber-500 text-gray-950 font-black px-4 py-2 rounded-xl text-xs whitespace-nowrap shadow-md">Todas</button>
+    </div>
+
+    <!-- CONTENEDOR DE PRODUCTOS -->
+    <div id="client-menu-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <p class="col-span-full text-center text-gray-500 py-12 font-bold animate-pulse">Cargando la carta exquisita... 🥢</p>
+    </div>
+
   </main>
 
-  <!-- Modal 1: Personalizar Plato -->
-  <div id="options-modal" class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-    <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-2xl">
-      <div class="flex justify-between items-center border-b pb-3">
-        <h3 id="modal-product-title" class="font-bold text-lg text-gray-900">Personalizar Plato</h3>
-        <button onclick="closeModal()" class="text-gray-400 font-bold text-xl px-2">✕</button>
-      </div>
-
-      <div id="protein-section">
-        <label class="block text-xs font-extrabold uppercase tracking-wider text-gray-500 mb-2">Selecciona tu Proteína:</label>
-        <div class="space-y-2">
-          <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-amber-50">
-            <input type="radio" name="protein-option" value="Carne de Pollo" checked class="accent-amber-500 w-4 h-4">
-            <span class="text-sm font-bold text-gray-800">🍗 Carne de Pollo</span>
-          </label>
-          <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-amber-50">
-            <input type="radio" name="protein-option" value="Carne de Vacuno" class="accent-amber-500 w-4 h-4">
-            <span class="text-sm font-bold text-gray-800">🥩 Carne de Vacuno</span>
-          </label>
-        </div>
-      </div>
-
-      <div id="chili-section">
-        <label class="block text-xs font-extrabold uppercase tracking-wider text-gray-500 mb-2">Picante / Ají:</label>
-        <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-amber-50">
-          <input type="checkbox" id="add-chili-check" class="accent-amber-500 w-4 h-4">
-          <span class="text-sm font-bold text-gray-800">🌶️ Agregar Ají</span>
-        </label>
-      </div>
-
-      <button onclick="confirmCustomizedProduct()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3.5 rounded-2xl shadow-lg transition-all active:scale-95">
-        Agregar al Pedido
-      </button>
+  <!-- BARRA FLOTANTE DE CARRITO -->
+  <div id="cart-bar" class="fixed bottom-4 left-4 right-4 max-w-xl mx-auto bg-amber-500 text-gray-950 p-4 rounded-2xl shadow-2xl flex justify-between items-center z-50 hidden cursor-pointer" onclick="openCartModal()">
+    <div class="flex items-center gap-3">
+      <span id="cart-count" class="bg-gray-950 text-amber-400 font-black text-xs px-2.5 py-1 rounded-xl">0</span>
+      <span class="font-black text-sm">Ver mi Pedido</span>
     </div>
-  </div>
-
-  <!-- Modal 2: Checkout Completo -->
-  <div id="checkout-modal" class="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
-    <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 shadow-2xl my-auto">
-      <div class="flex justify-between items-center border-b pb-2">
-        <h3 class="font-black text-xl text-gray-900">Finalizar Pedido 🛒</h3>
-        <button onclick="closeCheckout()" class="text-gray-400 font-bold text-2xl">✕</button>
-      </div>
-
-      <div>
-        <label class="block text-xs font-bold text-gray-600 uppercase">Nombre Completo *</label>
-        <input type="text" id="cust-name" placeholder="Ej: Juan Pérez" class="w-full mt-1 p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-semibold focus:outline-amber-500">
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-gray-600 uppercase">Teléfono de contacto *</label>
-        <input type="tel" id="cust-phone" placeholder="Ej: +56912345678" class="w-full mt-1 p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-semibold focus:outline-amber-500">
-      </div>
-
-      <div>
-        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Tipo de Entrega *</label>
-        <div class="grid grid-cols-2 gap-2">
-          <button type="button" id="btn-delivery" onclick="setDeliveryType('delivery')" class="py-2.5 px-3 rounded-xl border border-amber-500 bg-amber-50 text-amber-700 font-bold text-xs flex items-center justify-center gap-1">🛵 Domicilio</button>
-          <button type="button" id="btn-pickup" onclick="setDeliveryType('pickup')" class="py-2.5 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-bold text-xs flex items-center justify-center gap-1">🛍️ Retiro en Local</button>
-        </div>
-      </div>
-
-      <div id="delivery-fields" class="space-y-3 bg-amber-50/50 p-3.5 rounded-2xl border border-amber-200">
-        <label class="block text-xs font-extrabold text-amber-900 uppercase">📍 Cálculo Automático de Despacho ($1.000 / km)</label>
-        
-        <button type="button" id="geo-btn" onclick="detectUserLocation()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95">
-          <span>📍 Usar mi ubicación actual (GPS + Dirección)</span>
-        </button>
-
-        <div>
-          <label class="block text-[11px] font-bold text-gray-600 uppercase">Calle y Número de Casa/Depto *</label>
-          <input type="text" id="cust-address" placeholder="Ej: Av. Ramón Picarte 1200, Valdivia" class="w-full mt-1 p-2.5 bg-white rounded-xl border border-gray-200 text-xs font-semibold focus:outline-amber-500">
-        </div>
-
-        <div class="flex justify-between items-center text-xs pt-1">
-          <span class="text-gray-600 font-bold">Distancia estimada:</span>
-          <span id="calculated-km-label" class="font-black text-amber-700">1.0 km ($1.000)</span>
-        </div>
-      </div>
-
-      <div>
-        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Método de Pago *</label>
-        <select id="cust-payment" onchange="toggleCashField()" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold focus:outline-amber-500">
-          <option value="Efectivo">💵 Efectivo</option>
-          <option value="Transferencia">🏦 Transferencia Bancaria</option>
-          <option value="Tarjeta">💳 Tarjeta (POS en destino)</option>
-        </select>
-      </div>
-
-      <div id="cash-change-field">
-        <label class="block text-xs font-bold text-gray-600 uppercase">¿Con cuánto pagas? (Para llevar el vuelto) *</label>
-        <input type="number" id="cust-cash-amount" placeholder="Ej: 20000" class="w-full mt-1 p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-semibold focus:outline-amber-500">
-      </div>
-
-      <div class="bg-gray-100 p-3 rounded-2xl space-y-1 text-xs font-semibold text-gray-700">
-        <div class="flex justify-between"><span>Subtotal Platos:</span><span id="summary-subtotal">$0</span></div>
-        <div class="flex justify-between"><span>Costo Despacho:</span><span id="summary-delivery">$0</span></div>
-        <div class="flex justify-between text-sm font-extrabold text-gray-900 border-t border-gray-300 pt-1"><span>TOTAL FINAL:</span><span id="summary-total" class="text-amber-600">$0</span></div>
-      </div>
-
-      <button id="submit-order-btn" onclick="submitOrder()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-2xl shadow-xl transition-all active:scale-95 text-base flex justify-center items-center gap-2">
-        <span>✅ Confirmar y Enviar Pedido</span>
-      </button>
-    </div>
-  </div>
-
-  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 max-w-md mx-auto shadow-2xl z-40 flex justify-between items-center">
-    <div>
-      <span class="text-xs text-gray-400 font-medium block">Total acumulado:</span>
-      <span id="cart-total" class="text-2xl font-black text-gray-900">$0</span>
-    </div>
-    <button onclick="openCheckoutModal()" class="bg-amber-500 hover:bg-amber-600 active:scale-95 transition-all text-white font-bold py-3 px-5 rounded-2xl flex items-center gap-2 shadow-lg shadow-amber-500/20">
-      <span>🛍️ Ir a Pagar</span>
-    </button>
+    <span id="cart-total" class="font-black text-base sm:text-lg">$0</span>
   </div>
 
   <script>
-    const WHATSAPP_PHONE = "56932649489";
-    const STORE_LAT = -39.8251;
-    const STORE_LNG = -73.2355;
-    // Cargar horario desde Firebase y validar si el local está abierto
-    db.ref('horario').on('value', (snapshot) => {
-      const horario = snapshot.val() || { open: "17:00", close: "23:55" };
-      checkIfOpen(horario.open, horario.close);
-    });
-
-    function checkIfOpen(openTimeStr, closeTimeStr) {
-      const now = new Date();
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-      const [openH, openM] = openTimeStr.split(':').map(Number);
-      const [closeH, closeM] = closeTimeStr.split(':').map(Number);
-
-      const openMinutes = openH * 60 + openM;
-      const closeMinutes = closeH * 60 + closeM;
-
-      let isOpen = false;
-      if (closeMinutes > openMinutes) {
-        isOpen = currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
-      } else {
-        // Horario que cruza la medianoche
-        isOpen = currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
-      }
-
-      const banner = document.getElementById('store-status-banner'); // O el contenedor de aviso
-      const checkoutBtn = document.getElementById('checkout-btn'); // Botón de enviar pedido
-
-      if (!isOpen) {
-        if (checkoutBtn) {
-          checkoutBtn.disabled = true;
-          checkoutBtn.innerText = `🔒 Local Cerrado (Horario: ${openTimeStr} - ${closeTimeStr})`;
-          checkoutBtn.classList.add('opacity-50', 'cursor-not-allowed');
-        }
-      } else {
-        if (checkoutBtn) {
-          checkoutBtn.disabled = false;
-          checkoutBtn.innerText = "🚀 Enviar Pedido por WhatsApp";
-          checkoutBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-        }
-      }
-    }
-
-    // 🕒 CONFIGURACIÓN DE HORARIO DE ATENCIÓN (Formato 24 Horas)
-    const OPEN_HOUR = 17;   // 17:00 (5:00 PM)
-    const OPEN_MIN = 0;
-    const CLOSE_HOUR = 23;  // 23:55 (11:55 PM)
-    const CLOSE_MIN = 55;
-
-    let calculatedKm = 1;
-
     const firebaseConfig = {
       databaseURL: "https://sushi-wok-89bee-default-rtdb.firebaseio.com/"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    let defaultProducts = [
-      { id: 1, category: "entradas", name: "CHICKEN CRISPY", desc: "Jugosas tiras de pollo crujientes, 6 un.", price: 6690, available: true, img: "https://assets.olaclick.app/companies/products/images/800/7d7ccda4-7772-4aa5-b463-d98c84228a01.png" },
-      { id: 2, category: "entradas", name: "POLLO FRITO", desc: "Crujientes tiras de pollo fritas en panko, 6 un.", price: 6000, available: true, img: "https://assets.olaclick.app/companies/products/images/800/1cc91131-7283-43a0-bacb-471737445736.png" },
-      { id: 3, category: "entradas", name: "EMPANADAS POLLO MANDARIN", desc: "Empanaditas de pollo con cebollín, 5 un.", price: 4000, available: true, img: "https://assets.olaclick.app/companies/products/images/800/5a0d06f5-f9d1-4a7d-be1d-507310b6c388.png" },
-      { id: 4, category: "entradas", name: "CAMARON FURAY", desc: "Camarones en panko fritos, 6 un.", price: 6000, available: true, img: "https://assets.olaclick.app/companies/products/images/800/8048be17-2938-4155-8f89-d9f7a8b07b7d.png" },
-      { id: 5, category: "entradas", name: "CAMARON TEMPURIZADO", desc: "Camarones en tempura, 6 un.", price: 6000, available: true, img: "https://assets.olaclick.app/companies/products/images/800/6ab684af-8272-494b-b411-bb5248566514.jfif" },
-      { id: 6, category: "entradas", name: "ARROLLADO JAMON QUESO", desc: "Masa rellena de jamón y queso, 5 un.", price: 3500, available: true, img: "https://assets.olaclick.app/companies/products/images/800/94509cae-104c-4002-aae1-acb106c27843.png" },
-      { id: 7, category: "entradas", name: "ARROLLADO PRIMAVERA", desc: "Masa crujiente rellena de verduras y pollo, 5 un.", price: 3000, available: true, img: "https://assets.olaclick.app/companies/products/images/800/b35063a4-1543-41ba-abb2-e6b4bab22396.png" },
-      { id: 8, category: "entradas", name: "FINGER DE QUESO", desc: "Palitos de queso artesanal en panko, 6 un.", price: 5000, available: true, img: "https://assets.olaclick.app/companies/products/images/800/ae66e983-6cf6-4be7-b92d-9f1c99cb49a2.png" },
-      { id: 9, category: "entradas", name: "SHRIMP MAKI", desc: "Camarones en salmón y queso crema con salsa agridulce, 4 un.", price: 6500, available: true, img: "https://assets.olaclick.app/companies/products/images/800/d9281376-00b4-4619-b4d1-2e265706387a.png" },
-      { id: 10, category: "entradas", name: "EMPANADAS QUESO", desc: "Empanadas de queso crocantes, 3 un.", price: 2000, available: true, img: "https://assets.olaclick.app/companies/products/images/800/2574fb41-91da-4950-9308-52049c3d3181.jpg" },
-      { id: 11, category: "wok", name: "COLACION MONGOLIANA", desc: "Salteado Mongoliano + chaufán + 2 arrollados.", price: 6000, available: true, hasOptions: true, img: "https://assets.olaclick.app/companies/products/images/800/ffdfeb38-be15-4989-9f07-abcf64b3d150.png" },
-      { id: 12, category: "wok", name: "COLACION CHOP SUEY", desc: "Salteado verduras + chaufán + 2 arrollados.", price: 5500, available: true, hasOptions: true, img: "https://assets.olaclick.app/companies/products/images/800/67b2fbb4-6c4d-49c9-949b-f05a1baf35dd.jpeg" },
-      { id: 13, category: "wok", name: "PORCION DE ARROZ", desc: "Porción de arroz (250 grs aprox).", price: 2000, available: true, img: "https://assets.olaclick.app/companies/products/images/800/66335b29-9a5e-4c57-899e-3141ee4d39be.jpg" }
-    ];
+    let clientProducts = [];
+    let selectedCat = 'Todas';
+    let cart = [];
 
-    let products = [];
-    let cartList = [];
-    let activeProductForModal = null;
-    let selectedDeliveryType = 'delivery';
-    let currentFilter = 'all';
-
-    // 🕒 Función de Comprobación de Horario
-    function isStoreOpen() {
-      const now = new Date();
-      const currentMin = now.getHours() * 60 + now.getMinutes();
-      const openMin = OPEN_HOUR * 60 + OPEN_MIN;
-      const closeMin = CLOSE_HOUR * 60 + CLOSE_MIN;
-
-      return currentMin >= openMin && currentMin <= closeMin;
-    }
-
-    function updateStoreStatusUI() {
-      const banner = document.getElementById('store-status-banner');
-      if (isStoreOpen()) {
-        banner.className = "mt-2 inline-block px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-        banner.innerText = "🟢 Abierto (17:00 a 23:55 hrs)";
-      } else {
-        banner.className = "mt-2 inline-block px-3 py-1 rounded-full text-[11px] font-bold bg-red-500/20 text-red-400 border border-red-500/30";
-        banner.innerText = "🔴 Cerrado (Horario: 17:00 a 23:55 hrs)";
-      }
-    }
-
+    // Cargar menú desde Firebase
     db.ref('menu').on('value', (snapshot) => {
       const data = snapshot.val();
-      if (!data) {
-        db.ref('menu').set(defaultProducts);
-        products = defaultProducts;
+      if (data) {
+        // Asegura formato Array
+        clientProducts = Array.isArray(data) ? data.filter(Boolean) : Object.values(data);
+        renderCategories();
+        filterMenu();
       } else {
-        products = Array.isArray(data) ? data : Object.values(data);
+        document.getElementById('client-menu-container').innerHTML = `
+          <div class="col-span-full text-center text-gray-500 py-12 font-bold">
+            No hay productos cargados en el menú aún.
+          </div>`;
       }
-      renderMenu(currentFilter);
-      updateStoreStatusUI();
     });
 
-    function renderMenu(filter = "all") {
-      currentFilter = filter;
-      const container = document.getElementById('menu-container');
+    function renderCategories() {
+      const categories = ['Todas', ...new Set(clientProducts.map(p => p.category).filter(Boolean))];
+      const bar = document.getElementById('category-bar');
+      bar.innerHTML = categories.map(cat => `
+        <button onclick="selectCategory('${cat}')" class="cat-btn ${cat === selectedCat ? 'bg-amber-500 text-gray-950 font-black' : 'bg-gray-900 text-gray-300 hover:bg-gray-800 font-bold'} px-4 py-2 rounded-xl text-xs whitespace-nowrap shadow-md transition-all">
+          ${cat}
+        </button>
+      `).join('');
+    }
+
+    function selectCategory(cat) {
+      selectedCat = cat;
+      renderCategories();
+      filterMenu();
+    }
+
+    function filterMenu() {
+      const query = document.getElementById('client-search').value.toLowerCase();
+      const container = document.getElementById('client-menu-container');
       container.innerHTML = '';
-      const filtered = filter === 'all' ? products : products.filter(p => p.category === filter);
+
+      const filtered = clientProducts.filter(p => {
+        const matchesCat = selectedCat === 'Todas' || p.category === selectedCat;
+        const matchesSearch = p.name.toLowerCase().includes(query) || (p.description && p.description.toLowerCase().includes(query));
+        const isAvailable = p.available !== false;
+        return matchesCat && matchesSearch && isAvailable;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full text-center text-gray-500 py-12 font-bold">
+            No encontramos platos en esta categoría... 🍣
+          </div>`;
+        return;
+      }
 
       filtered.forEach(p => {
-        const count = cartList.filter(item => item.id === p.id).reduce((sum, item) => sum + item.qty, 0);
-        const isAvailable = p.available !== false;
-
         container.innerHTML += `
-          <div class="bg-white p-3 rounded-2xl border border-gray-100 shadow-xs flex gap-3 items-center ${!isAvailable ? 'opacity-50 grayscale' : ''}">
-            <img src="${p.img}" alt="${p.name}" class="w-24 h-24 object-cover rounded-xl bg-gray-100">
+          <div class="bg-gray-900 rounded-2xl p-3.5 border border-gray-800/80 shadow-lg flex gap-3 items-center">
+            <img src="${p.img || 'https://via.placeholder.com/150'}" class="w-20 h-20 rounded-xl object-cover bg-gray-800 flex-shrink-0">
             <div class="flex-1 min-w-0">
-              <h3 class="font-bold text-gray-800 text-sm truncate">${p.name}</h3>
-              <p class="text-xs text-gray-400 line-clamp-2 mt-0.5">${p.desc}</p>
+              <h3 class="font-bold text-white text-sm truncate">${p.name}</h3>
+              <p class="text-[11px] text-gray-400 line-clamp-2 mt-0.5">${p.description || ''}</p>
               <div class="flex justify-between items-center mt-2">
-                <span class="font-black text-gray-900 text-sm">$${(p.price || 0).toLocaleString('es-CL')}</span>
-                <div class="flex items-center gap-2">
-                  ${!isAvailable ? `
-                    <span class="text-[10px] font-black bg-red-100 text-red-600 px-2 py-1 rounded-lg uppercase">AGOTADO</span>
-                  ` : p.hasOptions ? `
-                    <button onclick="openModal(${p.id})" class="bg-amber-500 text-white font-extrabold text-xs px-3 py-1 rounded-lg shadow-2xs active:scale-95">
-                      + Personalizar ${count > 0 ? `(${count})` : ''}
-                    </button>
-                  ` : `
-                    <div class="flex items-center gap-2 bg-gray-100 p-1 rounded-xl">
-                      <button onclick="updateSimpleQty(${p.id}, -1)" class="w-6 h-6 rounded-lg bg-white flex items-center justify-center font-bold text-gray-700 text-xs active:scale-95">-</button>
-                      <span class="text-xs font-bold w-4 text-center">${count}</span>
-                      <button onclick="updateSimpleQty(${p.id}, 1)" class="w-6 h-6 rounded-lg bg-gray-900 text-white flex items-center justify-center font-bold text-xs active:scale-95">+</button>
-                    </div>
-                  `}
-                </div>
+                <span class="font-black text-amber-400 text-sm">$${(p.price || 0).toLocaleString('es-CL')}</span>
+                <button onclick="addToCart(${p.id})" class="bg-amber-500 hover:bg-amber-400 text-gray-950 font-black text-xs px-3 py-1.5 rounded-xl transition-all shadow-md active:scale-95">
+                  + Agregar
+                </button>
               </div>
             </div>
           </div>
@@ -313,233 +144,38 @@
       });
     }
 
-    function openModal(productId) {
-      activeProductForModal = products.find(p => p.id === productId);
-      if(!activeProductForModal || activeProductForModal.available === false) return;
-      document.getElementById('modal-product-title').innerText = activeProductForModal.name;
-      document.getElementById('add-chili-check').checked = false;
-      document.getElementById('options-modal').classList.remove('hidden');
-    }
-    function closeModal() { document.getElementById('options-modal').classList.add('hidden'); }
+    function addToCart(prodId) {
+      const prod = clientProducts.find(p => p.id === prodId);
+      if (!prod) return;
 
-    function confirmCustomizedProduct() {
-      if (!activeProductForModal) return;
-      const selectedProtein = document.querySelector('input[name="protein-option"]:checked').value;
-      const addChili = document.getElementById('add-chili-check').checked;
-      let detail = `(${selectedProtein}${addChili ? ' + Ají🌶️' : ''})`;
-
-      cartList.push({ id: activeProductForModal.id, name: activeProductForModal.name, price: activeProductForModal.price, qty: 1, detail: detail });
-      closeModal();
-      renderMenu(currentFilter);
-      updateTotal();
-    }
-
-    function updateSimpleQty(productId, change) {
-      const p = products.find(prod => prod.id === productId);
-      if(!p || p.available === false) return;
-      const idx = cartList.findIndex(item => item.id === productId);
-      if (change > 0) {
-        if (idx >= 0) cartList[idx].qty += 1;
-        else cartList.push({ id: p.id, name: p.name, price: p.price, qty: 1, detail: "" });
-      } else if (change < 0 && idx >= 0) {
-        cartList[idx].qty -= 1;
-        if (cartList[idx].qty <= 0) cartList.splice(idx, 1);
-      }
-      renderMenu(currentFilter);
-      updateTotal();
-    }
-
-    function updateTotal() {
-      const subtotal = cartList.reduce((sum, item) => sum + (item.price * item.qty), 0);
-      document.getElementById('cart-total').innerText = '$' + subtotal.toLocaleString('es-CL');
-    }
-
-    function detectUserLocation() {
-      if (!navigator.geolocation) {
-        alert("Tu navegador no soporta geolocalización.");
-        return;
-      }
-      const geoBtn = document.getElementById('geo-btn');
-      geoBtn.innerText = "⏳ Geolocalizando y obteniendo dirección...";
-
-      navigator.geolocation.getCurrentPosition((position) => {
-        const userLat = position.coords.latitude;
-        const userLng = position.coords.longitude;
-
-        const R = 6371;
-        const dLat = (userLat - STORE_LAT) * Math.PI / 180;
-        const dLon = (userLng - STORE_LNG) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(STORE_LAT * Math.PI / 180) * Math.cos(userLat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const distance = R * c;
-
-        calculatedKm = Math.max(1, Math.ceil(distance));
-        const cost = calculatedKm * 1000;
-        document.getElementById('calculated-km-label').innerText = `${calculatedKm} km ($${cost.toLocaleString('es-CL')})`;
-
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${userLat}&lon=${userLng}`)
-          .then(res => res.json())
-          .then(data => {
-            geoBtn.innerText = "📍 Usar mi ubicación actual (GPS + Dirección)";
-            if (data && data.address) {
-              const road = data.address.road || data.address.pedestrian || data.address.suburb || "Valdivia";
-              const houseNumber = data.address.house_number ? ' ' + data.address.house_number : '';
-              document.getElementById('cust-address').value = `${road}${houseNumber}, Valdivia`;
-            } else {
-              document.getElementById('cust-address').value = `Ubicación GPS (${userLat.toFixed(4)}, ${userLng.toFixed(4)})`;
-            }
-            calculateGrandTotal();
-            alert(`¡Ubicación detectada! Distancia: ~${calculatedKm} km. Despacho: $${cost.toLocaleString('es-CL')}`);
-          })
-          .catch(() => {
-            geoBtn.innerText = "📍 Usar mi ubicación actual (GPS + Dirección)";
-            document.getElementById('cust-address').value = `Ubicación GPS (${userLat.toFixed(4)}, ${userLng.toFixed(4)})`;
-            calculateGrandTotal();
-          });
-
-      }, (error) => {
-        geoBtn.innerText = "📍 Usar mi ubicación actual (GPS + Dirección)";
-        alert("No se pudo obtener tu ubicación automáticamente. Escribe tu dirección manualmente.");
-      });
-    }
-
-    function openCheckoutModal() {
-      if (cartList.length === 0) {
-        alert("Agrega productos a tu pedido antes de continuar.");
-        return;
-      }
-
-      // Validar si está abierto antes de desplegar el modal
-      if (!isStoreOpen()) {
-        alert("🔴 El local se encuentra actualmente CERRADO.\nNuestro horario de atención es de 17:00 a 23:55 hrs.");
-        return;
-      }
-
-      document.getElementById('checkout-modal').classList.remove('hidden');
-      calculateGrandTotal();
-    }
-    function closeCheckout() { document.getElementById('checkout-modal').classList.add('hidden'); }
-
-    function setDeliveryType(type) {
-      selectedDeliveryType = type;
-      if (type === 'delivery') {
-        document.getElementById('btn-delivery').className = "py-2.5 px-3 rounded-xl border border-amber-500 bg-amber-50 text-amber-700 font-bold text-xs flex items-center justify-center gap-1";
-        document.getElementById('btn-pickup').className = "py-2.5 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-bold text-xs flex items-center justify-center gap-1";
-        document.getElementById('delivery-fields').classList.remove('hidden');
+      const item = cart.find(i => i.id === prodId);
+      if (item) {
+        item.qty += 1;
       } else {
-        document.getElementById('btn-pickup').className = "py-2.5 px-3 rounded-xl border border-amber-500 bg-amber-50 text-amber-700 font-bold text-xs flex items-center justify-center gap-1";
-        document.getElementById('btn-delivery').className = "py-2.5 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-bold text-xs flex items-center justify-center gap-1";
-        document.getElementById('delivery-fields').classList.add('hidden');
+        cart.push({ id: prod.id, name: prod.name, price: prod.price, qty: 1 });
       }
-      calculateGrandTotal();
+      updateCartBar();
     }
 
-    function toggleCashField() {
-      const payment = document.getElementById('cust-payment').value;
-      if (payment === 'Efectivo') document.getElementById('cash-change-field').classList.remove('hidden');
-      else document.getElementById('cash-change-field').classList.add('hidden');
+    function updateCartBar() {
+      const bar = document.getElementById('cart-bar');
+      const countEl = document.getElementById('cart-count');
+      const totalEl = document.getElementById('cart-total');
+
+      const totalQty = cart.reduce((sum, i) => sum + i.qty, 0);
+      const totalPrice = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+      if (totalQty > 0) {
+        bar.classList.remove('hidden');
+        countEl.innerText = totalQty;
+        totalEl.innerText = '$' + totalPrice.toLocaleString('es-CL');
+      } else {
+        bar.classList.add('hidden');
+      }
     }
 
-    function calculateGrandTotal() {
-      const subtotal = cartList.reduce((sum, item) => sum + (item.price * item.qty), 0);
-      let deliveryCost = selectedDeliveryType === 'delivery' ? (calculatedKm * 1000) : 0;
-      const grandTotal = subtotal + deliveryCost;
-
-      document.getElementById('summary-subtotal').innerText = '$' + subtotal.toLocaleString('es-CL');
-      document.getElementById('summary-delivery').innerText = '$' + deliveryCost.toLocaleString('es-CL');
-      document.getElementById('summary-total').innerText = '$' + grandTotal.toLocaleString('es-CL');
-      return { subtotal, deliveryCost, grandTotal };
-    }
-
-    function submitOrder() {
-      if (!isStoreOpen()) {
-        alert("🔴 El local se encuentra CERRADO en este momento.\nHorario de atención: 17:00 a 23:55 hrs.");
-        return;
-      }
-
-      const name = document.getElementById('cust-name').value.trim();
-      const phone = document.getElementById('cust-phone').value.trim();
-      if (!name || !phone) {
-        alert("Por favor completa tu Nombre y Teléfono.");
-        return;
-      }
-
-      let address = "Retiro en Local (Av. Picarte 3045)";
-      let km = 0;
-      if (selectedDeliveryType === 'delivery') {
-        address = document.getElementById('cust-address').value.trim();
-        km = calculatedKm;
-        if (!address) {
-          alert("Por favor indica tu dirección.");
-          return;
-        }
-      }
-
-      const payment = document.getElementById('cust-payment').value;
-      let changeInfo = "";
-      if (payment === 'Efectivo') {
-        const cashAmount = parseInt(document.getElementById('cust-cash-amount').value) || 0;
-        const totals = calculateGrandTotal();
-        if (cashAmount > 0) {
-          const change = cashAmount - totals.grandTotal;
-          changeInfo = `Paga con $${cashAmount.toLocaleString('es-CL')} (Vuelto: $${change > 0 ? change.toLocaleString('es-CL') : '0'})`;
-        }
-      }
-
-      const totals = calculateGrandTotal();
-
-      const orderData = {
-        timestamp: Date.now(),
-        date: new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
-        customer: name,
-        phone: phone,
-        deliveryType: selectedDeliveryType === 'delivery' ? 'Domicilio' : 'Retiro en Local',
-        address: address,
-        km: km,
-        paymentMethod: payment,
-        changeInfo: changeInfo,
-        items: cartList,
-        subtotal: totals.subtotal,
-        deliveryCost: totals.deliveryCost,
-        grandTotal: totals.grandTotal,
-        status: 'Pendiente'
-      };
-
-      db.ref('pedidos').push(orderData);
-
-      let text = "🥢 *NUEVO PEDIDO - SUSHI & WOK*\n";
-      text += "----------------------------------\n";
-      text += `👤 *Cliente:* ${name}\n`;
-      text += `📞 *Teléfono:* ${phone}\n`;
-      text += `🛵 *Tipo:* ${orderData.deliveryType}\n`;
-      if (selectedDeliveryType === 'delivery') {
-        text += `📍 *Dirección:* ${address} (~${km} KM)\n`;
-      }
-      text += `💳 *Pago:* ${payment} ${changeInfo ? '\n💵 ' + changeInfo : ''}\n`;
-      text += "----------------------------------\n";
-      text += "📋 *DETALLE DEL PEDIDO:*\n";
-
-      cartList.forEach(item => {
-        text += `• ${item.qty}x ${item.name} ${item.detail} ($${(item.price * item.qty).toLocaleString('es-CL')})\n`;
-      });
-
-      text += "----------------------------------\n";
-      text += `💰 *Subtotal Platos:* $${totals.subtotal.toLocaleString('es-CL')}\n`;
-      text += `🛵 *Costo Despacho:* $${totals.deliveryCost.toLocaleString('es-CL')}\n`;
-      text += `🔥 *TOTAL A PAGAR:* *$${totals.grandTotal.toLocaleString('es-CL')}*\n`;
-
-      const url = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(text)}`;
-      window.open(url, '_blank');
-    }
-
-    function filterCategory(cat) {
-      document.querySelectorAll('.cat-btn').forEach(btn => {
-        btn.classList.remove('bg-amber-500', 'text-white');
-        btn.classList.add('bg-gray-100', 'text-gray-700');
-      });
-      event.target.classList.remove('bg-gray-100', 'text-gray-700');
-      event.target.classList.add('bg-amber-500', 'text-white');
-      renderMenu(cat);
+    function openCartModal() {
+      alert("Aquí se abre el modal para ingresar los datos del pedido.");
     }
   </script>
 </body>
