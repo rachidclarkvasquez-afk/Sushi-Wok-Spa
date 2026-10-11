@@ -25,7 +25,7 @@
   <!-- Header -->
   <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-gray-800 pb-4 mb-6 gap-3">
     <div>
-      <h1 class="text-2xl font-black text-amber-400 flex items-center gap-2">🥢 SUSHI & WOK <span class="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md font-bold">PANEL CONTROL</span></h1>
+      <h1 class="text-2xl font-black text-amber-400 flex items-center gap-2">🥢 SUSHI & WOK <span class="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md font-bold">POS & COMANDERO</span></h1>
       <p class="text-xs text-gray-400">Av. Ramón Picarte 3045, Valdivia</p>
     </div>
     <div class="flex items-center gap-2 flex-wrap">
@@ -65,7 +65,28 @@
         <button onclick="filterLiveOrders('En Camino')" class="btn-f-live bg-gray-800 text-gray-300 px-3 py-1 rounded-lg font-bold">En Reparto</button>
       </div>
     </div>
-    <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="orders-container"></main>
+
+    <!-- VISTA TABLA PARA COMPUTADOR (Oculto en Celulares) -->
+    <div class="hidden lg:block bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden shadow-2xl">
+      <table class="w-full text-left border-collapse text-xs">
+        <thead>
+          <tr class="bg-gray-950 text-gray-400 border-b border-gray-800 uppercase text-[10px]">
+            <th class="p-3">N° Correlativo</th>
+            <th class="p-3">Hora / Tiempo</th>
+            <th class="p-3">Cliente / Teléfono</th>
+            <th class="p-3">Tipo / Dirección</th>
+            <th class="p-3">Detalle Platos</th>
+            <th class="p-3">Total / Pago</th>
+            <th class="p-3 text-center">Estado</th>
+            <th class="p-3 text-center">Acciones / Tickets</th>
+          </tr>
+        </thead>
+        <tbody id="orders-table-body" class="divide-y divide-gray-800/60"></tbody>
+      </table>
+    </div>
+
+    <!-- VISTA TARJETAS PARA CELULARES (Visible solo en Teléfonos/Tablets) -->
+    <main class="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden" id="orders-container"></main>
   </section>
 
   <!-- SECCIÓN 2: PEDIDOS ENTREGADOS -->
@@ -133,7 +154,6 @@
 
   <!-- SECCIÓN 4: GESTIÓN DE MENÚ / HORARIO / STOCK -->
   <section id="sec-menu" class="space-y-6 hidden">
-    <!-- Configuración de Horario -->
     <div class="bg-gray-900 p-5 rounded-2xl border border-gray-800 space-y-3">
       <h2 class="text-base font-black text-amber-400">🕒 Configuración de Horario de Atención</h2>
       <p class="text-xs text-gray-400">Define las horas de apertura y cierre para recepción de pedidos en la web del cliente.</p>
@@ -189,7 +209,7 @@
     </div>
   </div>
 
-  <!-- MODAL NUEVO PEDIDO MANUAL (MESÓN / PRESENCIAL) -->
+  <!-- MODAL NUEVO PEDIDO MANUAL (MESÓN) -->
   <div id="manual-order-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-4 hidden">
     <div class="bg-gray-900 w-full max-w-xl rounded-3xl p-5 border border-gray-800 space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-gray-800 pb-3">
@@ -373,592 +393,81 @@
       if (!timestamp) return "Reciente";
       const diffMin = Math.floor((Date.now() - timestamp) / 60000);
       if (diffMin < 1) return "Hace un momento";
-      return `⏱️ Lleva ${diffMin} min`;
+      return `⏱️ ${diffMin} min`;
     }
 
     function renderLiveOrders() {
-      const container = document.getElementById('orders-container');
-      container.innerHTML = '';
+      const tableBody = document.getElementById('orders-table-body');
+      const cardsContainer = document.getElementById('orders-container');
+      tableBody.innerHTML = '';
+      cardsContainer.innerHTML = '';
 
-      const ordersArray = Object.keys(allOrders).map(key => ({ id: key, ...allOrders[key] })).reverse();
-      const activeOrders = ordersArray.filter(o => o.status !== 'Entregado' && o.status !== 'Cancelado');
-      const filtered = currentLiveFilter === 'Todos' ? activeOrders : activeOrders.filter(o => o.status === currentLiveFilter);
+      // Ordenar cronológicamente para asignar número correlativo (#001, #002...)
+      const ordersKeys = Object.keys(allOrders).sort((a, b) => (allOrders[a].timestamp || 0) - (allOrders[b].timestamp || 0));
+      
+      const activeKeys = ordersKeys.filter(key => {
+        const o = allOrders[key];
+        return o.status !== 'Entregado' && o.status !== 'Cancelado';
+      });
 
-      if (filtered.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-16 font-bold">Sin pedidos activos por el momento... 🥢</div>`;
+      if (activeKeys.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-gray-500 py-12 font-bold">Sin pedidos activos por el momento... 🥢</td></tr>`;
+        cardsContainer.innerHTML = `<div class="col-span-full text-center text-gray-500 py-16 font-bold">Sin pedidos activos por el momento... 🥢</div>`;
         return;
       }
 
-      filtered.forEach(order => {
+      ordersKeys.forEach((key, index) => {
+        const order = allOrders[key];
+        if (order.status === 'Entregado' || order.status === 'Cancelado') return;
+        if (currentLiveFilter !== 'Todos' && order.status !== currentLiveFilter) return;
+
+        const correlativeNum = '#' + String(index + 1).padStart(3, '0');
+
         let statusColor = "bg-amber-500/20 text-amber-400 border-amber-500/40";
         if (order.status === 'En Preparación') statusColor = "bg-blue-500/20 text-blue-400 border-blue-500/40";
         if (order.status === 'En Camino') statusColor = "bg-purple-500/20 text-purple-400 border-purple-500/40";
 
-        let itemsHtml = order.items.map(i => `
+        let itemsText = order.items.map(i => `<span class="block"><b>${i.qty}x</b>${i.name} <em class="text-[10px] text-gray-400">${i.detail || ''}</em></span>`).join('');
+
+        // 1. RENDERIZAR FILA EN TABLA (Computador)
+        tableBody.innerHTML += `
+          <tr class="hover:bg-gray-800/40 transition-colors">
+            <td class="p-3 font-black text-amber-400 text-sm align-top">${correlativeNum}</td>
+            <td class="p-3 text-gray-300 align-top">
+              <span class="block font-bold">${order.date}</span>
+              <span class="text-[10px] text-amber-500">${getElapsedTime(order.timestamp)}</span>
+            </td>
+            <td class="p-3 align-top">
+              <strong class="text-white block">${order.customer}</strong>
+              <span class="text-gray-400">📞 ${order.phone}</span>
+            </td>
+            <td class="p-3 align-top">
+              <span class="font-bold text-gray-200 block">🛵 ${order.deliveryType}</span>
+              <span class="text-gray-400 text-[11px]">${order.address}</span>
+            </td>
+            <td class="p-3 align-top max-w-xs">${itemsText}</td>             <td class="p-3 align-top">               <span class="font-black text-emerald-400 text-sm block">$${order.grandTotal.toLocaleString('es-CL')}</span>
+              <span class="text-[11px] text-gray-400 block">💳 ${order.paymentMethod}</span>${order.changeInfo ? `<span class="text-[10px] text-amber-300 block">${order.changeInfo}</span>` : ''}
+            </td>
+            <td class="p-3 text-center align-top">
+              <span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold border ${statusColor} inline-block">${order.status}</span>
+            </td>
+            <td class="p-3 text-center align-top space-y-1">
+              <div class="flex justify-center gap-1">
+                <button onclick="updateStatus('${key}', 'En Preparación')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2 py-1 rounded text-[10px]">Cocina</button>
+                <button onclick="updateStatus('${key}', 'En Camino')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-2 py-1 rounded text-[10px]">Reparto</button>
+                <button onclick="updateStatus('${key}', 'Entregado')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded text-[10px]">Entregado</button>
+              </div>
+              <div class="flex justify-center gap-1 pt-1">
+                <button onclick="printKitchenTicket('${key}')" class="bg-amber-500 text-gray-950 font-extrabold px-2 py-0.5 rounded text-[10px]">🖨️ Cocina</button>
+                <button onclick="printCustomerTicket('${key}')" class="bg-gray-700 text-white font-bold px-2 py-0.5 rounded text-[10px]">🖨️ Cliente</button>
+                <button onclick="openEditModal('${key}')" class="text-amber-400 font-bold px-1 text-[10px]">✏️</button>
+                <button onclick="cancelOrder('${key}')" class="text-red-400 font-bold px-1 text-[10px]">❌</button>
+              </div>
+            </td>
+          </tr>
+        `;
+
+        // 2. RENDERIZAR TARJETA (Celular)
+        let mobileItemsHtml = order.items.map(i => `
           <div class="flex justify-between text-xs py-1 border-b border-gray-800/60">
-            <span><strong class="text-amber-400">${i.qty}x</strong> ${i.name} <em class="text-[10px] text-gray-400">${i.detail || ''}</em></span>
-            <span class="font-bold">$${(i.price * i.qty).toLocaleString('es-CL')}</span>
-          </div>
-        `).join('');
-
-        container.innerHTML += `
-          <div class="bg-gray-900 rounded-2xl p-4 border border-gray-800 shadow-xl space-y-3">
-            <div class="flex justify-between items-start">
-              <div>
-                <span class="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">${getElapsedTime(order.timestamp)}</span>
-                <h3 class="text-base font-black text-white mt-1">${order.customer}</h3>
-                <p class="text-xs text-gray-400 font-bold">📞 ${order.phone}</p>
-              </div>
-              <div class="flex flex-col items-end gap-1">
-                <span class="px-2 py-0.5 rounded-lg text-[11px] font-bold border ${statusColor}">${order.status}</span>
-                <button onclick="openEditModal('${order.id}')" class="text-[10px] font-bold text-amber-400 hover:underline">✏️ Editar Pedido</button>
-              </div>
-            </div>
-
-            <div class="bg-gray-950 p-2.5 rounded-xl space-y-1 text-xs border border-gray-800/80">
-              <p class="font-bold text-gray-300">🛵 ${order.deliveryType} ${order.km ? `(~${order.km} KM)` : ''}</p>
-              <p class="text-gray-400 line-clamp-1">📍 ${order.address}</p>
-              <p class="font-bold text-emerald-400">💳 ${order.paymentMethod} ${order.changeInfo ? '| ' + order.changeInfo : ''}</p>
-            </div>
-
-            <div class="space-y-1 my-2">
-              ${itemsHtml}
-            </div>
-
-            <div class="flex justify-between items-center text-xs font-black pt-2 border-t border-gray-800">
-              <span>TOTAL COMANDA:</span>
-              <span class="text-emerald-400 text-base">$${order.grandTotal.toLocaleString('es-CL')}</span>
-            </div>
-
-            <div class="grid grid-cols-2 gap-1.5 pt-1">
-              <button onclick="printKitchenTicket('${order.id}')" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1 shadow-sm">🖨️ Ticket Cocina</button>
-              <button onclick="printCustomerTicket('${order.id}')" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">🖨️ Ticket Cliente</button>
-            </div>
-
-            <div class="grid grid-cols-3 gap-1 pt-1">
-              <button onclick="updateStatus('${order.id}', 'En Preparación')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] py-2 rounded-lg">👨‍🍳 Cocina</button>
-              <button onclick="updateStatus('${order.id}', 'En Camino')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] py-2 rounded-lg">🛵 Reparto</button>
-              <button onclick="updateStatus('${order.id}', 'Entregado')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] py-2 rounded-lg">✅ Entregado</button>
-            </div>
-
-            <div class="grid grid-cols-3 gap-1 pt-1 border-t border-gray-800/60">
-              <button onclick="sendCustomerWsp('${order.id}')" class="bg-emerald-950 hover:bg-emerald-900 border border-emerald-600/40 text-emerald-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center">💬 Avisar</button>
-              <button onclick="sendOnWayWsp('${order.id}')" class="bg-blue-950 hover:bg-blue-900 border border-blue-600/40 text-blue-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center">🛵 ¡Va en Camino!</button>
-              <button onclick="cancelOrder('${order.id}')" class="bg-red-950 hover:bg-red-900 border border-red-600/40 text-red-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center">❌ Cancelar</button>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    function cancelOrder(orderId) {
-      if (confirm("¿Seguro que deseas cancelar / eliminar este pedido?")) {
-        db.ref(`pedidos/${orderId}`).remove();
-      }
-    }
-
-    function renderCompletedOrders() {
-      const container = document.getElementById('completed-orders-container');
-      container.innerHTML = '';
-
-      const ordersArray = Object.keys(allOrders).map(key => ({ id: key, ...allOrders[key] })).reverse();
-      const completedOrders = ordersArray.filter(o => o.status === 'Entregado');
-
-      if (completedOrders.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-16 font-bold">Aún no hay pedidos marcados como entregados. 🥢</div>`;
-        return;
-      }
-
-      completedOrders.forEach(order => {
-        let itemsHtml = order.items.map(i => `
-          <div class="flex justify-between text-xs py-1 border-b border-gray-800/60">
-            <span><strong class="text-amber-400">${i.qty}x</strong> ${i.name} <em class="text-[10px] text-gray-400">${i.detail || ''}</em></span>
-            <span class="font-bold">$${(i.price * i.qty).toLocaleString('es-CL')}</span>
-          </div>
-        `).join('');
-
-        container.innerHTML += `
-          <div class="bg-gray-900 rounded-2xl p-4 border border-gray-800 shadow-xl space-y-3 opacity-90">
-            <div class="flex justify-between items-start">
-              <div>
-                <span class="text-[10px] font-bold text-gray-500">HORA: ${order.date}</span>
-                <h3 class="text-base font-black text-white mt-0.5">${order.customer}</h3>
-                <p class="text-xs text-gray-400 font-bold">📞 ${order.phone}</p>
-              </div>
-              <span class="px-2 py-0.5 rounded-lg text-[11px] font-bold border bg-emerald-500/20 text-emerald-400 border-emerald-500/40">✅ ENTREGADO</span>
-            </div>
-
-            <div class="bg-gray-950 p-2.5 rounded-xl space-y-1 text-xs border border-gray-800/80">
-              <p class="font-bold text-gray-300">🛵 ${order.deliveryType} ${order.km ? `(~${order.km} KM)` : ''}</p>
-              <p class="text-gray-400 line-clamp-1">📍 ${order.address}</p>
-              <p class="font-bold text-emerald-400">💳 ${order.paymentMethod} ${order.changeInfo ? '| ' + order.changeInfo : ''}</p>
-            </div>
-
-            <div class="space-y-1 my-2">
-              ${itemsHtml}
-            </div>
-
-            <div class="flex justify-between items-center text-xs font-black pt-2 border-t border-gray-800">
-              <span>TOTAL COMANDA:</span>
-              <span class="text-emerald-400 text-base">$${order.grandTotal.toLocaleString('es-CL')}</span>
-            </div>
-
-            <div class="grid grid-cols-2 gap-1.5 pt-1">
-              <button onclick="printCustomerTicket('${order.id}')" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">🖨️ Reimprimir Ticket</button>
-              <button onclick="updateStatus('${order.id}', 'En Preparación')" class="bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">↩️ Reabrir Pedido</button>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    // ➕ LÓGICA DE PEDIDO MANUAL / MESÓN
-    function openNewManualOrderModal() {
-      manualCartItems = [];
-      document.getElementById('manual-cust-name').value = "Cliente Mesón";
-      document.getElementById('manual-cust-phone').value = "+56900000000";
-      renderManualItems();
-      renderManualVisualPicker();
-      document.getElementById('manual-order-modal').classList.remove('hidden');
-    }
-
-    function closeManualOrderModal() {
-      document.getElementById('manual-order-modal').classList.add('hidden');
-    }
-
-    function renderManualVisualPicker() {
-      const container = document.getElementById('manual-product-picker');
-      container.innerHTML = '';
-
-      menuProducts.forEach(p => {
-        container.innerHTML += `
-          <div onclick="addManualItem(${p.id})" class="flex items-center gap-2 p-1.5 bg-gray-950 hover:bg-gray-800 border border-gray-800 rounded-xl cursor-pointer">
-            <img src="${p.img}" class="w-10 h-10 rounded-lg object-cover">
-            <div class="flex-1 min-w-0">
-              <h5 class="text-[11px] font-bold text-white truncate">${p.name}</h5>
-              <p class="text-[10px] font-black text-amber-400">$${p.price.toLocaleString('es-CL')}</p>
-            </div>
-            <button class="bg-amber-500 text-gray-950 font-black text-[10px] px-2 py-0.5 rounded">+ Agregar</button>
-          </div>
-        `;
-      });
-    }
-
-    function addManualItem(prodId) {
-      const p = menuProducts.find(prod => prod.id === prodId);
-      if (!p) return;
-
-      const idx = manualCartItems.findIndex(i => i.id === p.id);
-      if (idx >= 0) manualCartItems[idx].qty += 1;
-      else manualCartItems.push({ id: p.id, name: p.name, price: p.price, qty: 1, detail: "" });
-
-      renderManualItems();
-    }
-
-    function renderManualItems() {
-      const container = document.getElementById('manual-items-container');
-      container.innerHTML = '';
-
-      let total = 0;
-      manualCartItems.forEach((item, idx) => {
-        total += (item.price * item.qty);
-        container.innerHTML += `
-          <div class="flex justify-between items-center bg-gray-950 p-2 rounded-xl border border-gray-800 text-xs">
-            <span class="font-bold text-gray-200">${item.qty}x ${item.name}</span>
-            <div class="flex items-center gap-2">
-              <button onclick="changeManualQty(${idx}, -1)" class="w-5 h-5 bg-gray-800 text-white rounded font-bold">-</button>
-              <span class="font-bold text-amber-400">${item.qty}</span>
-              <button onclick="changeManualQty(${idx}, 1)" class="w-5 h-5 bg-gray-800 text-white rounded font-bold">+</button>
-            </div>
-          </div>
-        `;
-      });
-
-      document.getElementById('manual-total-val').innerText = '$' + total.toLocaleString('es-CL');
-    }
-
-    function changeManualQty(idx, delta) {
-      manualCartItems[idx].qty += delta;
-      if (manualCartItems[idx].qty <= 0) manualCartItems.splice(idx, 1);
-      renderManualItems();
-    }
-
-    function submitManualOrder() {
-      if (manualCartItems.length === 0) {
-        alert("Agrega al menos un producto.");
-        return;
-      }
-
-      const name = document.getElementById('manual-cust-name').value.trim() || "Cliente Mesón";
-      const phone = document.getElementById('manual-cust-phone').value.trim() || "+56900000000";
-      const delType = document.getElementById('manual-delivery-type').value;
-      const payment = document.getElementById('manual-payment').value;
-
-      const total = manualCartItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
-
-      const orderData = {
-        timestamp: Date.now(),
-        date: new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
-        customer: name,
-        phone: phone,
-        deliveryType: delType,
-        address: delType === 'Domicilio' ? "Dirección ingresada en mesón" : "Retiro en Local (Av. Picarte 3045)",
-        km: 0,
-        paymentMethod: payment,
-        items: manualCartItems,
-        subtotal: total,
-        deliveryCost: 0,
-        grandTotal: total,
-        status: 'En Preparación'
-      };
-
-      db.ref('pedidos').push(orderData);
-      closeManualOrderModal();
-      alert("¡Pedido ingresado correctamente y enviado a cocina!");
-    }
-
-    function openEditModal(orderId) {
-      editingOrderId = orderId;
-      const order = allOrders[orderId];
-      if (!order) return;
-
-      document.getElementById('edit-modal-client').innerText = order.customer;
-      editingCartItems = JSON.parse(JSON.stringify(order.items || []));
-
-      renderEditItems();
-      renderVisualProductPicker();
-      document.getElementById('edit-order-modal').classList.remove('hidden');
-    }
-
-    function closeEditModal() {
-      document.getElementById('edit-order-modal').classList.add('hidden');
-    }
-
-    function renderEditItems() {
-      const container = document.getElementById('edit-items-container');
-      container.innerHTML = '';
-
-      if (editingCartItems.length === 0) {
-        container.innerHTML = `<p class="text-xs text-gray-500 italic p-2">No hay platos en la comanda.</p>`;
-        calculateEditTotals();
-        return;
-      }
-
-      editingCartItems.forEach((item, idx) => {
-        container.innerHTML += `
-          <div class="flex justify-between items-center bg-gray-950 p-2 rounded-xl border border-gray-800 text-xs">
-            <span class="font-bold text-gray-200">${item.name} <em class="text-[10px] text-gray-400">${item.detail || ''}</em></span>
-            <div class="flex items-center gap-2">
-              <button onclick="changeItemQty(${idx}, -1)" class="w-6 h-6 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-bold flex items-center justify-center">-</button>
-              <span class="font-bold text-amber-400 w-4 text-center">${item.qty}</span>
-              <button onclick="changeItemQty(${idx}, 1)" class="w-6 h-6 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-bold flex items-center justify-center">+</button>
-              <button onclick="removeItemFromEdit(${idx})" class="text-red-400 font-bold px-1 ml-1">🗑️</button>
-            </div>
-          </div>
-        `;
-      });
-
-      calculateEditTotals();
-    }
-
-    function renderVisualProductPicker() {
-      const container = document.getElementById('visual-product-picker');
-      container.innerHTML = '';
-
-      menuProducts.forEach(p => {
-        container.innerHTML += `
-          <div onclick="addVisualItemToOrder(${p.id})" class="flex items-center gap-2.5 p-2 bg-gray-950 hover:bg-gray-800/80 border border-gray-800 rounded-xl cursor-pointer transition-all active:scale-95">
-            <img src="${p.img}" class="w-12 h-12 rounded-lg object-cover bg-gray-800">
-            <div class="flex-1 min-w-0">
-              <h5 class="text-xs font-bold text-white truncate">${p.name}</h5>
-              <p class="text-[11px] font-black text-amber-400">$${p.price.toLocaleString('es-CL')}</p>
-            </div>
-            <button class="bg-amber-500 text-gray-950 font-black text-xs px-2.5 py-1 rounded-lg hover:bg-amber-400">+ Agregar</button>
-          </div>
-        `;
-      });
-    }
-
-    function addVisualItemToOrder(prodId) {
-      const prod = menuProducts.find(p => p.id === prodId);
-      if (!prod) return;
-
-      const idx = editingCartItems.findIndex(i => i.id === prod.id && !i.detail);
-      if (idx >= 0) {
-        editingCartItems[idx].qty += 1;
-      } else {
-        editingCartItems.push({ id: prod.id, name: prod.name, price: prod.price, qty: 1, detail: "" });
-      }
-      renderEditItems();
-    }
-
-    function changeItemQty(idx, delta) {
-      editingCartItems[idx].qty += delta;
-      if (editingCartItems[idx].qty <= 0) editingCartItems.splice(idx, 1);
-      renderEditItems();
-    }
-
-    function removeItemFromEdit(idx) {
-      editingCartItems.splice(idx, 1);
-      renderEditItems();
-    }
-
-    function calculateEditTotals() {
-      const order = allOrders[editingOrderId];
-      const subtotal = editingCartItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
-      const deliveryCost = order ? (order.deliveryCost || 0) : 0;
-      const grandTotal = subtotal + deliveryCost;
-
-      document.getElementById('edit-subtotal-val').innerText = '$' + subtotal.toLocaleString('es-CL');
-      document.getElementById('edit-delivery-val').innerText = '$' + deliveryCost.toLocaleString('es-CL');
-      document.getElementById('edit-total-val').innerText = '$' + grandTotal.toLocaleString('es-CL');
-
-      return { subtotal, deliveryCost, grandTotal };
-    }
-
-    function saveOrderEdits() {
-      if (!editingOrderId) return;
-      const totals = calculateEditTotals();
-
-      db.ref(`pedidos/${editingOrderId}`).update({
-        items: editingCartItems,
-        subtotal: totals.subtotal,
-        grandTotal: totals.grandTotal
-      });
-
-      closeEditModal();
-      alert("¡Comanda actualizada correctamente!");
-    }
-
-    function updateStatus(orderId, newStatus) {
-      db.ref(`pedidos/${orderId}`).update({ status: newStatus });
-    }
-
-    function sendOnWayWsp(orderId) {
-      const o = allOrders[orderId];
-      if (!o) return;
-      let phone = o.phone.replace(/[^0-9]/g, '');
-      if (!phone.startsWith('56')) phone = '56' + phone;
-
-      let msg = `Hola *${o.customer}*! 👋 De *SUSHI & WOK* 🥢 te informamos que tu pedido **¡YA VA EN CAMINO!** 🛵💨 hacia tu dirección.\n\n`;
-      msg += `💰 Total a cancelar: *$${o.grandTotal.toLocaleString('es-CL')}* (${o.paymentMethod})\n\n`;
-      msg += `¡Prepara tu mesa y gracias por preferirnos! 🍣`;
-
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-      updateStatus(orderId, 'En Camino');
-    }
-
-    function sendCustomerWsp(orderId) {
-      const o = allOrders[orderId];
-      if (!o) return;
-      let phone = o.phone.replace(/[^0-9]/g, '');
-      if (!phone.startsWith('56')) phone = '56' + phone;
-
-      let msg = `Hola *${o.customer}*! 👋 Saludos de *SUSHI & WOK* 🥢.\n`;
-      msg += `Tu pedido se encuentra actualizando su estado a: *${o.status.toUpperCase()}*.\n`;
-      if (o.deliveryType === 'Domicilio') msg += `🛵 Dirección de entrega: ${o.address}\n`;
-      msg += `💰 Total a pagar: *$${o.grandTotal.toLocaleString('es-CL')}* (${o.paymentMethod})\n\n`;
-      msg += `¡Muchas gracias por elegirnos! 🍣`;
-
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-    }
-
-    function sendDriverWsp(orderId) {
-      const o = allOrders[orderId];
-      if (!o) return;
-
-      let msg = `🛵 *PEDIDO PARA REPARTO - SUSHI & WOK*\n`;
-      msg += `----------------------------------\n`;
-      msg += `👤 *Cliente:* ${o.customer}\n`;
-      msg += `📞 *Teléfono:* ${o.phone}\n`;
-      msg += `📍 *Dirección:* ${o.address}\n`;
-      msg += `🗺️ *Mapa GPS:* https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.address + ', Valdivia')}\n`;
-      msg += `----------------------------------\n`;
-      msg += `💵 *Cobro en destino:* ${o.paymentMethod} ($${o.grandTotal.toLocaleString('es-CL')})\n`;
-      if (o.changeInfo) msg += `⚠️ *Vuelto:* ${o.changeInfo}\n`;
-      msg += `💰 *Pago de envío:* $${(o.deliveryCost || 0).toLocaleString('es-CL')}\n`;
-
-      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-    }
-
-    function renderAdminMenu() {
-      const container = document.getElementById('admin-menu-list');
-      container.innerHTML = '';
-
-      menuProducts.forEach((p, idx) => {
-        const isAvail = p.available !== false;
-        container.innerHTML += `
-          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-gray-950 rounded-xl border border-gray-800 gap-3">
-            <div class="flex items-center gap-3">
-              <img src="${p.img}" class="w-12 h-12 rounded-lg object-cover bg-gray-800">
-              <div>
-                <h4 class="font-bold text-white text-sm">${p.name}</h4>
-                <p class="text-[10px] text-gray-400 capitalize">Categoría: ${p.category}</p>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-gray-800 pt-2 sm:pt-0">
-              <div class="flex items-center gap-1">
-                <span class="text-xs text-gray-400">$</span>
-                <input type="number" value="${p.price}" onchange="updateProductPrice(${idx}, this.value)" class="w-20 bg-gray-900 border border-gray-700 text-amber-400 font-bold text-xs p-1.5 rounded-lg text-right">
-              </div>
-
-              <button onclick="toggleProductStock(${idx})" class="px-3 py-1.5 rounded-lg font-bold text-xs ${isAvail ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}">
-                ${isAvail ? '🟢 Disponible' : '🔴 Agotado'}
-              </button>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    function toggleProductStock(idx) {
-      const current = menuProducts[idx].available !== false;
-      menuProducts[idx].available = !current;
-      db.ref('menu').set(menuProducts);
-    }
-
-    function updateProductPrice(idx, newPrice) {
-      menuProducts[idx].price = parseInt(newPrice) || 0;
-      db.ref('menu').set(menuProducts);
-    }
-
-    function printKitchenTicket(orderId) {
-      const o = allOrders[orderId];
-      if (!o) return;
-      let itemsTxt = o.items.map(i => `
-        <div style="font-size: 16px; font-weight: bold; margin-bottom: 6px;">
-          ${i.qty}x ${i.name}<br>
-          <span style="font-size: 13px; font-style: italic; font-weight: normal;">${i.detail || ''}</span>
-        </div>
-      `).join('<hr style="border-top: 1px dashed #ccc; margin: 4px 0;">');
-
-      document.getElementById('print-area').innerHTML = `
-        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 8px;">
-          <h2 style="margin: 0; font-size: 18px; font-weight: bold;">*** COMANDA COCINA ***</h2>
-          <p style="margin: 2px 0; font-size: 12px;">HORA: ${o.date} | TIPO: ${o.deliveryType.toUpperCase()}</p>
-        </div>
-        <div style="margin-bottom: 8px; font-size: 13px;">
-          <strong>CLIENTE:</strong> ${o.customer}<br>
-          <strong>TEL:</strong> ${o.phone}
-        </div>
-        <hr style="border-top: 2px solid #000; margin: 6px 0;">
-        <div>${itemsTxt}</div>
-        <hr style="border-top: 2px solid #000; margin: 8px 0;">
-        <p style="text-align: center; font-size: 11px; margin: 0;">-- SUSHI & WOK COCINA --</p>
-      `;
-      window.print();
-    }
-
-    function printCustomerTicket(orderId) {
-      const o = allOrders[orderId];
-      if (!o) return;
-      let itemsTxt = o.items.map(i => `
-        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-          <span>${i.qty}x ${i.name} ${i.detail || ''}</span>
-          <span>$${(i.price * i.qty).toLocaleString('es-CL')}</span>
-        </div>
-      `).join('');
-
-      document.getElementById('print-area').innerHTML = `
-        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 8px;">
-          <h2 style="margin: 0; font-size: 18px; font-weight: bold;">SUSHI & WOK</h2>
-          <p style="margin: 2px 0; font-size: 10px;">Av. Ramón Picarte 3045, Valdivia</p>
-          <p style="margin: 0; font-size: 11px; font-weight: bold;">TICKET DE ENTREGA</p>
-        </div>
-        <div style="margin-bottom: 8px; font-size: 11px;">
-          <strong>HORA:</strong> ${o.date}<br>
-          <strong>CLIENTE:</strong> ${o.customer}<br>
-          <strong>TELÉFONO:</strong> ${o.phone}<br>
-          <strong>TIPO:</strong> ${o.deliveryType}<br>
-          ${o.deliveryType === 'Domicilio' ? `<strong>DIRECCIÓN:</strong> ${o.address}<br>` : ''}
-          <strong>MEDIO DE PAGO:</strong> ${o.paymentMethod}<br>
-          ${o.changeInfo ? `<strong>PAGO/VUELTO:</strong> ${o.changeInfo}<br>` : ''}
-        </div>
-        <hr style="border-top: 1px dashed #000; margin: 6px 0;">
-        <div>${itemsTxt}</div>
-        <hr style="border-top: 1px dashed #000; margin: 6px 0;">
-        <div style="font-size: 11px;">
-          <div style="display: flex; justify-content: space-between;"><span>Subtotal Platos:</span><span>$${(o.subtotal || 0).toLocaleString('es-CL')}</span></div>
-          <div style="display: flex; justify-content: space-between;"><span>Despacho:</span><span>$${(o.deliveryCost || 0).toLocaleString('es-CL')}</span></div>
-          <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin-top: 4px; border-t: 1px solid #000; padding-top: 2px;">
-            <span>TOTAL:</span><span>$${o.grandTotal.toLocaleString('es-CL')}</span>
-          </div>
-        </div>
-        <hr style="border-top: 2px solid #000; margin: 8px 0;">
-        <p style="text-align: center; font-size: 11px; margin: 0;">¡Muchas gracias por su preferencia! 🥢</p>
-      `;
-      window.print();
-    }
-
-    function renderReports() {
-      const selectedDate = document.getElementById('report-date-picker').value;
-      const ordersArray = Object.keys(allOrders).map(key => ({ id: key, ...allOrders[key] }));
-
-      const dayOrders = ordersArray.filter(o => {
-        if (!o.timestamp) return false;
-        const orderDateStr = new Date(o.timestamp).toISOString().split('T')[0];
-        return orderDateStr === selectedDate && o.status === 'Entregado';
-      });
-
-      let totalSales = 0, totalCash = 0, totalTransfers = 0, totalCard = 0, deliveryCount = 0, totalDeliveryCost = 0;
-      let productCounts = {};
-
-      dayOrders.forEach(o => {
-        totalSales += (o.grandTotal || 0);
-
-        if (o.paymentMethod === 'Efectivo') totalCash += (o.grandTotal || 0);
-        else if (o.paymentMethod === 'Transferencia') totalTransfers += (o.grandTotal || 0);
-        else if (o.paymentMethod === 'Tarjeta') totalCard += (o.grandTotal || 0);
-
-        if (o.deliveryType === 'Domicilio') {
-          deliveryCount++;
-          totalDeliveryCost += (o.deliveryCost || 0);
-        }
-
-        if (o.items && Array.isArray(o.items)) {
-          o.items.forEach(item => {
-            if (!productCounts[item.name]) productCounts[item.name] = { qty: 0, total: 0 };
-            productCounts[item.name].qty += item.qty;
-            productCounts[item.name].total += (item.price * item.qty);
-          });
-        }
-      });
-
-      document.getElementById('stat-total-sales').innerText = '$' + totalSales.toLocaleString('es-CL');
-      document.getElementById('stat-order-count').innerText = `${dayOrders.length} pedidos entregados`;
-
-      document.getElementById('stat-cash').innerText = '$' + totalCash.toLocaleString('es-CL');
-      document.getElementById('stat-transfers').innerText = '$' + totalTransfers.toLocaleString('es-CL');
-      document.getElementById('stat-card').innerText = '$' + totalCard.toLocaleString('es-CL');
-
-      document.getElementById('stat-delivery-count').innerText = `${deliveryCount} Envíos`;
-      document.getElementById('stat-delivery-total').innerText = '$' + totalDeliveryCost.toLocaleString('es-CL');
-
-      const topContainer = document.getElementById('top-products-container');
-      topContainer.innerHTML = '';
-
-      const sortedProducts = Object.keys(productCounts)
-        .map(name => ({ name, ...productCounts[name] }))
-        .sort((a, b) => b.qty - a.qty);
-
-      if (sortedProducts.length === 0) {
-        topContainer.innerHTML = `<p class="text-gray-500 italic">No hay registros de platos entregados en esta fecha.</p>`;
-        return;
-      }
-
-      sortedProducts.forEach((p, idx) => {
-        topContainer.innerHTML += `
-          <div class="flex justify-between items-center p-2.5 bg-gray-950 rounded-xl border border-gray-800">
-            <span class="font-bold text-gray-300"><strong class="text-amber-400">#${idx + 1}</strong> ${p.name}</span>
-            <div class="text-right">
-              <span class="font-extrabold text-amber-400 block">${p.qty} un.</span>
-              <span class="text-[10px] text-gray-500 font-semibold">$${p.total.toLocaleString('es-CL')}</span>
-            </div>
-          </div>
-        `;
-      });
-    }
-  </script>
-</body>
-</html>
+            <span><strong class="text-amber-400">${i.qty}x</strong>${i.name} <em class="text-[10px] text-gray-400">${i.detail || ''
