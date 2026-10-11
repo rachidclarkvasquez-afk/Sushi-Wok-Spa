@@ -5,12 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SUSHI & WOK - Menú Digital</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase Scripts (Gratis en tiempo real) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-gray-50 font-sans pb-32">
+<body class="bg-gray-50 font-sans pb-36">
 
   <!-- Header del Local -->
   <header class="bg-gray-900 text-white p-5 text-center shadow-lg sticky top-0 z-40">
@@ -18,7 +23,7 @@
       <span class="text-2xl">🥢</span>
       <h1 class="text-2xl font-black tracking-wide uppercase text-amber-400">SUSHI & WOK</h1>
     </div>
-    <p class="text-xs text-gray-300 mt-1">Pide directamente a nuestra cocina por WhatsApp</p>
+    <p class="text-xs text-gray-300 mt-1">Av. Ramón Picarte 3045, Valdivia</p>
   </header>
 
   <!-- Categorías (Scroll Horizontal) -->
@@ -30,10 +35,10 @@
 
   <!-- Contenedor del Menú -->
   <main class="max-w-md mx-auto p-4 space-y-4" id="menu-container">
-    <!-- Los productos se inyectan dinámicamente -->
+    <!-- Productos inyectados dinámicamente -->
   </main>
 
-  <!-- Modal para Opciones (Carne / Ají / etc.) -->
+  <!-- Modal 1: Personalizar Plato (Proteína / Ají) -->
   <div id="options-modal" class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
     <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-2xl">
       <div class="flex justify-between items-center border-b pb-3">
@@ -41,9 +46,8 @@
         <button onclick="closeModal()" class="text-gray-400 font-bold text-xl px-2">✕</button>
       </div>
 
-      <!-- Selección de Proteína -->
       <div id="protein-section">
-        <label class="block text-xs font-extrabold uppercase tracking-wider text-gray-500 mb-2">Selecciona tu Proteína / Carne:</label>
+        <label class="block text-xs font-extrabold uppercase tracking-wider text-gray-500 mb-2">Selecciona tu Proteína:</label>
         <div class="space-y-2">
           <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-amber-50">
             <input type="radio" name="protein-option" value="Carne de Pollo" checked class="accent-amber-500 w-4 h-4">
@@ -56,7 +60,6 @@
         </div>
       </div>
 
-      <!-- Opción de Ají -->
       <div id="chili-section">
         <label class="block text-xs font-extrabold uppercase tracking-wider text-gray-500 mb-2">Picante / Ají:</label>
         <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-amber-50">
@@ -71,155 +74,136 @@
     </div>
   </div>
 
+  <!-- Modal 2: Checkout Completo (Datos, Delivery, Pago y Vuelto) -->
+  <div id="checkout-modal" class="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
+    <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 shadow-2xl my-auto">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="font-black text-xl text-gray-900">Finalizar Pedido 🛒</h3>
+        <button onclick="closeCheckout()" class="text-gray-400 font-bold text-2xl">✕</button>
+      </div>
+
+      <!-- Datos Personales -->
+      <div>
+        <label class="block text-xs font-bold text-gray-600 uppercase">Nombre Completo *</label>
+        <input type="text" id="cust-name" placeholder="Ej: Juan Pérez" class="w-full mt-1 p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-semibold focus:outline-amber-500">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-gray-600 uppercase">Teléfono de contacto *</label>
+        <input type="tel" id="cust-phone" placeholder="Ej: +56912345678" class="w-full mt-1 p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-semibold focus:outline-amber-500">
+      </div>
+
+      <!-- Tipo de Entrega -->
+      <div>
+        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Tipo de Entrega *</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" id="btn-delivery" onclick="setDeliveryType('delivery')" class="py-2.5 px-3 rounded-xl border border-amber-500 bg-amber-50 text-amber-700 font-bold text-xs flex items-center justify-center gap-1">🛵 Domicilio</button>
+          <button type="button" id="btn-pickup" onclick="setDeliveryType('pickup')" class="py-2.5 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-bold text-xs flex items-center justify-center gap-1">🛍️ Para Llevar / Retiro</button>
+        </div>
+      </div>
+
+      <!-- Campo Dirección y Distancia (si es Delivery) -->
+      <div id="delivery-fields" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-gray-600 uppercase">Dirección de Entrega *</label>
+          <input type="text" id="cust-address" placeholder="Calle, Número, Villa o Sector" class="w-full mt-1 p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-semibold focus:outline-amber-500">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 uppercase">Distancia estimada ($1.000 / km desde el local) *</label>
+          <select id="cust-km" onchange="calculateGrandTotal()" class="w-full mt-1 p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold focus:outline-amber-500">
+            <option value="1">1 KM ($1.000 despacho)</option>
+            <option value="2">2 KM ($2.000 despacho)</option>
+            <option value="3">3 KM ($3.000 despacho)</option>
+            <option value="4">4 KM ($4.000 despacho)</option>
+            <option value="5">5 KM ($5.000 despacho)</option>
+            <option value="6">6 KM o más ($6.000 despacho)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Método de Pago -->
+      <div>
+        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Método de Pago *</label>
+        <select id="cust-payment" onchange="toggleCashField()" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold focus:outline-amber-500">
+          <option value="Efectivo">💵 Efectivo</option>
+          <option value="Transferencia">🏦 Transferencia Bancaria</option>
+          <option value="Tarjeta">💳 Tarjeta (Débito/Crédito POS)</option>
+        </select>
+      </div>
+
+      <!-- Campo Vuelto si paga en efectivo -->
+      <div id="cash-change-field">
+        <label class="block text-xs font-bold text-gray-600 uppercase">¿Con cuánto pagas? (Para llevar el vuelto) *</label>
+        <input type="number" id="cust-cash-amount" placeholder="Ej: 20000" class="w-full mt-1 p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-semibold focus:outline-amber-500">
+      </div>
+
+      <!-- Resumen de Costos -->
+      <div class="bg-gray-100 p-3 rounded-2xl space-y-1 text-xs font-semibold text-gray-700">
+        <div class="flex justify-between"><span>Subtotal Platos:</span><span id="summary-subtotal">$0</span></div>
+        <div class="flex justify-between"><span>Costo Despacho:</span><span id="summary-delivery">$0</span></div>
+        <div class="flex justify-between text-sm font-extrabold text-gray-900 border-t border-gray-300 pt-1"><span>TOTAL FINAL:</span><span id="summary-total" class="text-amber-600">$0</span></div>
+      </div>
+
+      <button onclick="submitOrder()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-2xl shadow-xl transition-all active:scale-95 text-base flex justify-center items-center gap-2">
+        <span>✅ Confirmar y Enviar Pedido</span>
+      </button>
+    </div>
+  </div>
+
   <!-- Barra Flotante Inferior -->
   <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 max-w-md mx-auto shadow-2xl z-40 flex justify-between items-center">
     <div>
-      <span class="text-xs text-gray-400 font-medium block">Total pedido:</span>
+      <span class="text-xs text-gray-400 font-medium block">Total acumulado:</span>
       <span id="cart-total" class="text-2xl font-black text-gray-900">$0</span>
     </div>
-    <button onclick="sendOrderToWhatsApp()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition-all text-white font-bold py-3 px-5 rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-600/20">
-      <span>📲 Pedir por WhatsApp</span>
+    <button onclick="openCheckoutModal()" class="bg-amber-500 hover:bg-amber-600 active:scale-95 transition-all text-white font-bold py-3 px-5 rounded-2xl flex items-center gap-2 shadow-lg shadow-amber-500/20">
+      <span>🛍️ Ir a Pagar</span>
     </button>
   </div>
 
   <script>
     const WHATSAPP_PHONE = "56932649489";
 
-    const products = [
-      // ENTRADAS
-      {
-        id: 1,
-        category: "entradas",
-        name: "CHICKEN CRISPY",
-        desc: "Jugosas tiras de pollo crujientes, sazonadas con especias selectas. Pack de 6 unidades.",
-        price: 6690,
-        badge: "Popular",
-        img: "https://assets.olaclick.app/companies/products/images/800/7d7ccda4-7772-4aa5-b463-d98c84228a01.png"
-      },
-      {
-        id: 2,
-        category: "entradas",
-        name: "POLLO FRITO",
-        desc: "Crujientes tiras de pollo fritas en panko, 6 unidades por porción.",
-        price: 6000,
-        img: "https://assets.olaclick.app/companies/products/images/800/1cc91131-7283-43a0-bacb-471737445736.png"
-      },
-      {
-        id: 3,
-        category: "entradas",
-        name: "EMPANADAS POLLO MANDARIN",
-        desc: "Empanaditas fritas de pollo con cebollín, 5 unidades por porción.",
-        price: 4000,
-        img: "https://assets.olaclick.app/companies/products/images/800/5a0d06f5-f9d1-4a7d-be1d-507310b6c388.png"
-      },
-      {
-        id: 4,
-        category: "entradas",
-        name: "CAMARON FURAY",
-        desc: "Crujientes camarones en Panko, fritos a la perfección. 6 unidades.",
-        price: 6000,
-        img: "https://assets.olaclick.app/companies/products/images/800/8048be17-2938-4155-8f89-d9f7a8b07b7d.png"
-      },
-      {
-        id: 5,
-        category: "entradas",
-        name: "CAMARON TEMPURIZADO",
-        desc: "Camarones apanados en tempura fritos. 6 unidades por porción.",
-        price: 6000,
-        img: "https://assets.olaclick.app/companies/products/images/800/6ab684af-8272-494b-b411-bb5248566514.jfif"
-      },
-      {
-        id: 6,
-        category: "entradas",
-        name: "ARROLLADO JAMON QUESO",
-        desc: "Fina masa de harina rellena de jamón y queso mantecoso. 5 unidades.",
-        price: 3500,
-        img: "https://assets.olaclick.app/companies/products/images/800/94509cae-104c-4002-aae1-acb106c27843.png"
-      },
-      {
-        id: 7,
-        category: "entradas",
-        name: "ARROLLADO PRIMAVERA",
-        desc: "Fina masa dorada crujiente rellena de zanahoria y pollo. 5 unidades.",
-        price: 3000,
-        img: "https://assets.olaclick.app/companies/products/images/800/b35063a4-1543-41ba-abb2-e6b4bab22396.png"
-      },
-      {
-        id: 8,
-        category: "entradas",
-        name: "FINGER DE QUESO",
-        desc: "Palitos de queso artesanal crujientes fritos en panko. 6 unidades.",
-        price: 5000,
-        img: "https://assets.olaclick.app/companies/products/images/800/ae66e983-6cf6-4be7-b92d-9f1c99cb49a2.png"
-      },
-      {
-        id: 9,
-        category: "entradas",
-        name: "SHRIMP MAKI",
-        desc: "Camarones apanados envueltos en salmón con toques de queso crema bañados en salsa agridulce. 4 unidades.",
-        price: 6500,
-        badge: "Recomendado",
-        img: "https://assets.olaclick.app/companies/products/images/800/d9281376-00b4-4619-b4d1-2e265706387a.png"
-      },
-      {
-        id: 10,
-        category: "entradas",
-        name: "EMPANADAS QUESO",
-        desc: "Empanadas de queso crocantes y cremosas. 3 unidades.",
-        price: 2000,
-        img: "https://assets.olaclick.app/companies/products/images/800/2574fb41-91da-4950-9308-52049c3d3181.jpg"
-      },
+    // Configuracion de Firebase para sincronizar con la cocina (Pestaña admin.html)
+    const firebaseConfig = {
+      databaseURL: "https://sushi-wok-default-rtdb.firebaseio.com/" // Reemplazar con tu URL de Firebase Realtime Database
+    };
+    if (typeof firebase !== 'undefined' && firebaseConfig.databaseURL !== "") {
+      firebase.initializeApp(firebaseConfig);
+    }
 
-      // WOK & COLACIONES
-      {
-        id: 11,
-        category: "wok",
-        name: "COLACION MONGOLIANA",
-        desc: "Salteado Mongoliano servido con arroz chaufán y 2 arrollados crujientes. ¡Elige tu carne y opcional ají!",
-        price: 6000,
-        badge: "Popular",
-        hasOptions: true,
-        img: "https://assets.olaclick.app/companies/products/images/800/ffdfeb38-be15-4989-9f07-abcf64b3d150.png"
-      },
-      {
-        id: 12,
-        category: "wok",
-        name: "COLACION CHOP SUEY",
-        desc: "Salteado de verduras + arroz chaufán + 2 arrollados. ¡Elige tu carne y opcional ají!",
-        price: 5500,
-        badge: "Especial",
-        hasOptions: true,
-        img: "https://assets.olaclick.app/companies/products/images/800/67b2fbb4-6c4d-49c9-949b-f05a1baf35dd.jpeg"
-      },
-      {
-        id: 13,
-        category: "wok",
-        name: "PORCION DE ARROZ",
-        desc: "Porción de arroz (250 grs aprox).",
-        price: 2000,
-        img: "https://assets.olaclick.app/companies/products/images/800/66335b29-9a5e-4c57-899e-3141ee4d39be.jpg"
-      }
+    const products = [
+      { id: 1, category: "entradas", name: "CHICKEN CRISPY", desc: "Jugosas tiras de pollo crujientes, 6 un.", price: 6690, img: "https://assets.olaclick.app/companies/products/images/800/7d7ccda4-7772-4aa5-b463-d98c84228a01.png" },
+      { id: 2, category: "entradas", name: "POLLO FRITO", desc: "Crujientes tiras de pollo fritas en panko, 6 un.", price: 6000, img: "https://assets.olaclick.app/companies/products/images/800/1cc91131-7283-43a0-bacb-471737445736.png" },
+      { id: 3, category: "entradas", name: "EMPANADAS POLLO MANDARIN", desc: "Empanaditas de pollo con cebollín, 5 un.", price: 4000, img: "https://assets.olaclick.app/companies/products/images/800/5a0d06f5-f9d1-4a7d-be1d-507310b6c388.png" },
+      { id: 4, category: "entradas", name: "CAMARON FURAY", desc: "Camarones en panko fritos, 6 un.", price: 6000, img: "https://assets.olaclick.app/companies/products/images/800/8048be17-2938-4155-8f89-d9f7a8b07b7d.png" },
+      { id: 5, category: "entradas", name: "CAMARON TEMPURIZADO", desc: "Camarones en tempura, 6 un.", price: 6000, img: "https://assets.olaclick.app/companies/products/images/800/6ab684af-8272-494b-b411-bb5248566514.jfif" },
+      { id: 6, category: "entradas", name: "ARROLLADO JAMON QUESO", desc: "Masa rellena de jamón y queso, 5 un.", price: 3500, img: "https://assets.olaclick.app/companies/products/images/800/94509cae-104c-4002-aae1-acb106c27843.png" },
+      { id: 7, category: "entradas", name: "ARROLLADO PRIMAVERA", desc: "Masa crujiente rellena de verduras y pollo, 5 un.", price: 3000, img: "https://assets.olaclick.app/companies/products/images/800/b35063a4-1543-41ba-abb2-e6b4bab22396.png" },
+      { id: 8, category: "entradas", name: "FINGER DE QUESO", desc: "Palitos de queso artesanal en panko, 6 un.", price: 5000, img: "https://assets.olaclick.app/companies/products/images/800/ae66e983-6cf6-4be7-b92d-9f1c99cb49a2.png" },
+      { id: 9, category: "entradas", name: "SHRIMP MAKI", desc: "Camarones en salmón y queso crema con salsa agridulce, 4 un.", price: 6500, img: "https://assets.olaclick.app/companies/products/images/800/d9281376-00b4-4619-b4d1-2e265706387a.png" },
+      { id: 10, category: "entradas", name: "EMPANADAS QUESO", desc: "Empanadas de queso crocantes, 3 un.", price: 2000, img: "https://assets.olaclick.app/companies/products/images/800/2574fb41-91da-4950-9308-52049c3d3181.jpg" },
+      { id: 11, category: "wok", name: "COLACION MONGOLIANA", desc: "Salteado Mongoliano + chaufán + 2 arrollados.", price: 6000, hasOptions: true, img: "https://assets.olaclick.app/companies/products/images/800/ffdfeb38-be15-4989-9f07-abcf64b3d150.png" },
+      { id: 12, category: "wok", name: "COLACION CHOP SUEY", desc: "Salteado verduras + chaufán + 2 arrollados.", price: 5500, hasOptions: true, img: "https://assets.olaclick.app/companies/products/images/800/67b2fbb4-6c4d-49c9-949b-f05a1baf35dd.jpeg" },
+      { id: 13, category: "wok", name: "PORCION DE ARROZ", desc: "Porción de arroz (250 grs aprox).", price: 2000, img: "https://assets.olaclick.app/companies/products/images/800/66335b29-9a5e-4c57-899e-3141ee4d39be.jpg" }
     ];
 
     let cartList = [];
     let activeProductForModal = null;
+    let selectedDeliveryType = 'delivery';
 
     function renderMenu(filter = "all") {
       const container = document.getElementById('menu-container');
       container.innerHTML = '';
-
       const filtered = filter === 'all' ? products : products.filter(p => p.category === filter);
 
       filtered.forEach(p => {
         const count = cartList.filter(item => item.id === p.id).reduce((sum, item) => sum + item.qty, 0);
-
         container.innerHTML += `
           <div class="bg-white p-3 rounded-2xl border border-gray-100 shadow-xs flex gap-3 items-center">
             <img src="${p.img}" alt="${p.name}" class="w-24 h-24 object-cover rounded-xl bg-gray-100">
             <div class="flex-1 min-w-0">
-              ${p.badge ? `<span class="bg-amber-100 text-amber-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase">${p.badge}</span>` : ''}
-              <h3 class="font-bold text-gray-800 text-sm truncate mt-0.5">${p.name}</h3>
-              <p class="text-xs text-gray-400 line-clamp-2 mt-0.5 leading-relaxed">${p.desc}</p>
+              <h3 class="font-bold text-gray-800 text-sm truncate">${p.name}</h3>
+              <p class="text-xs text-gray-400 line-clamp-2 mt-0.5">${p.desc}</p>
               <div class="flex justify-between items-center mt-2">
                 <span class="font-black text-gray-900 text-sm">$${p.price.toLocaleString('es-CL')}</span>
                 <div class="flex items-center gap-2 bg-gray-100 p-1 rounded-xl">
@@ -228,9 +212,9 @@
                       + Personalizar ${count > 0 ? `(${count})` : ''}
                     </button>
                   ` : `
-                    <button onclick="updateSimpleQty(${p.id}, -1)" class="w-6 h-6 rounded-lg bg-white shadow-2xs flex items-center justify-center font-bold text-gray-700 text-xs active:scale-95">-</button>
+                    <button onclick="updateSimpleQty(${p.id}, -1)" class="w-6 h-6 rounded-lg bg-white flex items-center justify-center font-bold text-gray-700 text-xs active:scale-95">-</button>
                     <span class="text-xs font-bold w-4 text-center">${count}</span>
-                    <button onclick="updateSimpleQty(${p.id}, 1)" class="w-6 h-6 rounded-lg bg-gray-900 text-white shadow-2xs flex items-center justify-center font-bold text-xs active:scale-95">+</button>
+                    <button onclick="updateSimpleQty(${p.id}, 1)" class="w-6 h-6 rounded-lg bg-gray-900 text-white flex items-center justify-center font-bold text-xs active:scale-95">+</button>
                   `}
                 </div>
               </div>
@@ -246,30 +230,15 @@
       document.getElementById('add-chili-check').checked = false;
       document.getElementById('options-modal').classList.remove('hidden');
     }
-
-    function closeModal() {
-      document.getElementById('options-modal').classList.add('hidden');
-      activeProductForModal = null;
-    }
+    function closeModal() { document.getElementById('options-modal').classList.add('hidden'); }
 
     function confirmCustomizedProduct() {
       if (!activeProductForModal) return;
-
       const selectedProtein = document.querySelector('input[name="protein-option"]:checked').value;
       const addChili = document.getElementById('add-chili-check').checked;
+      let detail = `(${selectedProtein}${addChili ? ' + Ají🌶️' : ''})`;
 
-      let detail = `(${selectedProtein}`;
-      if (addChili) detail += ` + con Ají🌶️`;
-      detail += `)`;
-
-      cartList.push({
-        id: activeProductForModal.id,
-        name: activeProductForModal.name,
-        price: activeProductForModal.price,
-        qty: 1,
-        detail: detail
-      });
-
+      cartList.push({ id: activeProductForModal.id, name: activeProductForModal.name, price: activeProductForModal.price, qty: 1, detail: detail });
       closeModal();
       renderMenu();
       updateTotal();
@@ -277,28 +246,147 @@
 
     function updateSimpleQty(productId, change) {
       const p = products.find(prod => prod.id === productId);
-      const existingIndex = cartList.findIndex(item => item.id === productId);
-
+      const idx = cartList.findIndex(item => item.id === productId);
       if (change > 0) {
-        if (existingIndex >= 0) {
-          cartList[existingIndex].qty += 1;
-        } else {
-          cartList.push({ id: p.id, name: p.name, price: p.price, qty: 1, detail: "" });
-        }
-      } else if (change < 0 && existingIndex >= 0) {
-        cartList[existingIndex].qty -= 1;
-        if (cartList[existingIndex].qty <= 0) {
-          cartList.splice(existingIndex, 1);
-        }
+        if (idx >= 0) cartList[idx].qty += 1;
+        else cartList.push({ id: p.id, name: p.name, price: p.price, qty: 1, detail: "" });
+      } else if (change < 0 && idx >= 0) {
+        cartList[idx].qty -= 1;
+        if (cartList[idx].qty <= 0) cartList.splice(idx, 1);
       }
-
       renderMenu();
       updateTotal();
     }
 
     function updateTotal() {
-      const total = cartList.reduce((sum, item) => sum + (item.price * item.qty), 0);
-      document.getElementById('cart-total').innerText = '$' + total.toLocaleString('es-CL');
+      const subtotal = cartList.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      document.getElementById('cart-total').innerText = '$' + subtotal.toLocaleString('es-CL');
+    }
+
+    /* Lógica del Checkout */
+    function openCheckoutModal() {
+      if (cartList.length === 0) {
+        alert("Agrega productos a tu pedido antes de continuar.");
+        return;
+      }
+      document.getElementById('checkout-modal').classList.remove('hidden');
+      calculateGrandTotal();
+    }
+    function closeCheckout() { document.getElementById('checkout-modal').classList.add('hidden'); }
+
+    function setDeliveryType(type) {
+      selectedDeliveryType = type;
+      if (type === 'delivery') {
+        document.getElementById('btn-delivery').className = "py-2.5 px-3 rounded-xl border border-amber-500 bg-amber-50 text-amber-700 font-bold text-xs flex items-center justify-center gap-1";
+        document.getElementById('btn-pickup').className = "py-2.5 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-bold text-xs flex items-center justify-center gap-1";
+        document.getElementById('delivery-fields').classList.remove('hidden');
+      } else {
+        document.getElementById('btn-pickup').className = "py-2.5 px-3 rounded-xl border border-amber-500 bg-amber-50 text-amber-700 font-bold text-xs flex items-center justify-center gap-1";
+        document.getElementById('btn-delivery').className = "py-2.5 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-bold text-xs flex items-center justify-center gap-1";
+        document.getElementById('delivery-fields').classList.add('hidden');
+      }
+      calculateGrandTotal();
+    }
+
+    function toggleCashField() {
+      const payment = document.getElementById('cust-payment').value;
+      if (payment === 'Efectivo') document.getElementById('cash-change-field').classList.remove('hidden');
+      else document.getElementById('cash-change-field').classList.add('hidden');
+    }
+
+    function calculateGrandTotal() {
+      const subtotal = cartList.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      let deliveryCost = 0;
+      if (selectedDeliveryType === 'delivery') {
+        const km = parseInt(document.getElementById('cust-km').value) || 1;
+        deliveryCost = km * 1000;
+      }
+      const grandTotal = subtotal + deliveryCost;
+
+      document.getElementById('summary-subtotal').innerText = '$' + subtotal.toLocaleString('es-CL');
+      document.getElementById('summary-delivery').innerText = '$' + deliveryCost.toLocaleString('es-CL');
+      document.getElementById('summary-total').innerText = '$' + grandTotal.toLocaleString('es-CL');
+      return { subtotal, deliveryCost, grandTotal };
+    }
+
+    function submitOrder() {
+      const name = document.getElementById('cust-name').value.trim();
+      const phone = document.getElementById('cust-phone').value.trim();
+      if (!name || !phone) {
+        alert("Por favor completa tu Nombre y Teléfono.");
+        return;
+      }
+
+      let address = "Retiro en Local (Av. Picarte 3045)";
+      let km = 0;
+      if (selectedDeliveryType === 'delivery') {
+        address = document.getElementById('cust-address').value.trim();
+        km = document.getElementById('cust-km').value;
+        if (!address) {
+          alert("Por favor ingresa la dirección de entrega.");
+          return;
+        }
+      }
+
+      const payment = document.getElementById('cust-payment').value;
+      let changeInfo = "";
+      if (payment === 'Efectivo') {
+        const cashAmount = parseInt(document.getElementById('cust-cash-amount').value) || 0;
+        const totals = calculateGrandTotal();
+        if (cashAmount > 0) {
+          const change = cashAmount - totals.grandTotal;
+          changeInfo = `Paga con $${cashAmount.toLocaleString('es-CL')} (Vuelto: $${change > 0 ? change.toLocaleString('es-CL') : '0'})`;
+        }
+      }
+
+      const totals = calculateGrandTotal();
+
+      // Guardar en la Base de Datos para el Comandero de Cocina (Si está conectado Firebase)
+      const orderData = {
+        timestamp: Date.now(),
+        date: new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+        customer: name,
+        phone: phone,
+        deliveryType: selectedDeliveryType === 'delivery' ? 'Domicilio' : 'Retiro en Local',
+        address: address,
+        km: km,
+        paymentMethod: payment,
+        changeInfo: changeInfo,
+        items: cartList,
+        subtotal: totals.subtotal,
+        deliveryCost: totals.deliveryCost,
+        grandTotal: totals.grandTotal,
+        status: 'Pendiente'
+      };
+
+      if (typeof firebase !== 'undefined' && firebase.database) {
+        firebase.database().ref('pedidos').push(orderData);
+      }
+
+      // Generar mensaje formateado para WhatsApp
+      let text = "🥢 *NUEVO PEDIDO - SUSHI & WOK*\n";
+      text += "----------------------------------\n";
+      text += `👤 *Cliente:* ${name}\n`;
+      text += `📞 *Teléfono:* ${phone}\n`;
+      text += `🛵 *Tipo:* ${orderData.deliveryType}\n`;
+      if (selectedDeliveryType === 'delivery') {
+        text += `📍 *Dirección:* ${address} (${km} KM)\n`;
+      }
+      text += `💳 *Pago:* ${payment} ${changeInfo ? '\n💵 ' + changeInfo : ''}\n`;
+      text += "----------------------------------\n";
+      text += "📋 *DETALLE DEL PEDIDO:*\n";
+
+      cartList.forEach(item => {
+        text += `• ${item.qty}x ${item.name} ${item.detail} ($${(item.price * item.qty).toLocaleString('es-CL')})\n`;
+      });
+
+      text += "----------------------------------\n";
+      text += `💰 *Subtotal Platos:* $${totals.subtotal.toLocaleString('es-CL')}\n`;
+      text += `🛵 *Costo Despacho:* $${totals.deliveryCost.toLocaleString('es-CL')}\n`;
+      text += `🔥 *TOTAL A PAGAR:* *$${totals.grandTotal.toLocaleString('es-CL')}*\n`;
+
+      const url = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(text)}`;
+      window.open(url, '_blank');
     }
 
     function filterCategory(cat) {
@@ -309,31 +397,6 @@
       event.target.classList.remove('bg-gray-100', 'text-gray-700');
       event.target.classList.add('bg-amber-500', 'text-white');
       renderMenu(cat);
-    }
-
-    function sendOrderToWhatsApp() {
-      if (cartList.length === 0) {
-        alert("Por favor selecciona al menos un producto.");
-        return;
-      }
-
-      let text = "🥢 *NUEVO PEDIDO - SUSHI & WOK*\n";
-      text += "----------------------------------\n";
-      let total = 0;
-
-      cartList.forEach(item => {
-        const itemTotal = item.price * item.qty;
-        total += itemTotal;
-        text += `• ${item.qty}x ${item.name} ${item.detail} ($${itemTotal.toLocaleString('es-CL')})\n`;
-      });
-
-      text += "----------------------------------\n";
-      text += `💰 *TOTAL ESTIMADO:* *$${total.toLocaleString('es-CL')}*\n\n`;
-      text += "👤 *Nombre:* \n";
-      text += "📍 *Dirección de entrega / Retiro:* ";
-
-      const url = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(text)}`;
-      window.open(url, '_blank');
     }
 
     renderMenu('all');
