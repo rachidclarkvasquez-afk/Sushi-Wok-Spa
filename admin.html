@@ -158,7 +158,7 @@
     </div>
   </section>
 
-  <!-- MODAL EDITAR COMANDA (PAGOS MÚLTIPLES + REGISTRO CLIENTES) -->
+  <!-- MODAL EDITAR COMANDA -->
   <div id="edit-order-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-4 hidden">
     <div class="bg-gray-900 w-full max-w-xl rounded-3xl p-5 border border-gray-800 space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-gray-800 pb-3">
@@ -166,7 +166,7 @@
         <button onclick="closeEditModal()" class="text-gray-400 font-bold text-2xl">✕</button>
       </div>
 
-      <!-- DATOS CLIENTE CON BÚSQUEDA AUTOMÁTICA -->
+      <!-- DATOS CLIENTE -->
       <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-2 text-xs">
         <label class="block font-bold text-amber-400 uppercase">👤 Datos del Cliente:</label>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -202,7 +202,7 @@
         </div>
       </div>
 
-      <!-- MODIFICACIÓN DE MEDIO DE PAGO Y DESGLOSE MÚLTIPLE -->
+      <!-- MEDIO DE PAGO Y DESGLOSE MÚLTIPLE -->
       <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-2 text-xs">
         <label class="block font-bold text-amber-400 uppercase">💳 Medio de Pago:</label>
         <select id="edit-payment-method" onchange="togglePaymentInputs('edit')" class="w-full bg-gray-900 border border-gray-700 text-emerald-400 font-bold p-2 rounded-xl">
@@ -212,7 +212,6 @@
           <option value="Pago Múltiple">🔀 Pago Múltiple / Combinado</option>
         </select>
 
-        <!-- Campo Efectivo / Vuelto -->
         <div id="edit-cash-details" class="space-y-1 pt-1">
           <div class="flex items-center gap-2">
             <label class="text-gray-400 font-bold min-w-[100px]">Paga con ($):</label>
@@ -221,7 +220,6 @@
           <p id="edit-change-display" class="text-emerald-400 font-black text-right pt-1">Vuelto: $0</p>
         </div>
 
-        <!-- Campos Pago Múltiple -->
         <div id="edit-multi-payment-details" class="space-y-2 pt-1 hidden border-t border-gray-800 mt-2">
           <p class="text-[11px] text-gray-400 italic">Ingresa el monto pagado con cada medio:</p>
           <div class="flex items-center gap-2">
@@ -315,13 +313,11 @@
         </div>
       </div>
 
-      <!-- Dirección si es Domicilio -->
       <div id="manual-address-container" class="text-xs hidden">
         <label class="block font-bold text-gray-400">Dirección de Entrega:</label>
         <input type="text" id="manual-cust-address" placeholder="Ej: Baltazar Mejías 4276" class="w-full mt-1 p-2 bg-gray-950 border border-gray-700 text-white rounded-xl font-semibold">
       </div>
 
-      <!-- Detalle de Pago en Pedido Manual -->
       <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-2 text-xs">
         <div id="manual-cash-details" class="space-y-1">
           <div class="flex items-center gap-2">
@@ -457,7 +453,6 @@
       alert("¡Horario guardado correctamente!");
     }
 
-    // REGISTRO Y AUTOCOMPLETADO DE CLIENTES
     function saveOrUpdateCustomer(name, phone, address) {
       if (!phone || phone === "+56900000000") return;
       const cleanPhone = phone.replace(/[^0-9]/g, '');
@@ -508,9 +503,9 @@
       document.getElementById(`${mode}-cust-suggestions`).classList.add('hidden');
     }
 
-    // MANEJO Y CÁLCULO DE PAGOS Y VUELTOS
     function togglePaymentInputs(mode) {
-      const method = document.getElementById(`${mode}-payment-method` || `${mode}-payment`).value;
+      const fieldId = mode === 'edit' ? 'edit-payment-method' : 'manual-payment';
+      const method = document.getElementById(fieldId).value;
       const cashBox = document.getElementById(`${mode}-cash-details`);
       const multiBox = document.getElementById(`${mode}-multi-payment-details`);
 
@@ -527,10 +522,17 @@
     }
 
     function calculateChange(mode) {
-      const totals = mode === 'edit' ? calculateEditTotals() : { grandTotal: manualCartItems.reduce((s, i) => s + (i.price * i.qty), 0) };
+      let totalToPay = 0;
+      if (mode === 'edit') {
+        const res = calculateEditTotals();
+        totalToPay = res.grandTotal;
+      } else {
+        totalToPay = manualCartItems.reduce((s, i) => s + (i.price * i.qty), 0);
+      }
       const paid = parseInt(document.getElementById(`${mode}-cash-amount`).value) || 0;
-      const change = paid - totals.grandTotal;
-      document.getElementById(`${mode}-change-display`).innerText = change >= 0 ? `Vuelto: $${change.toLocaleString('es-CL')}` : `Falta: $${Math.abs(change).toLocaleString('es-CL')}`;
+      const change = paid - totalToPay;
+      const disp = document.getElementById(`${mode}-change-display`);
+      if (disp) disp.innerText = change >= 0 ? `Vuelto: $${change.toLocaleString('es-CL')}` : `Falta: $${Math.abs(change).toLocaleString('es-CL')}`;
     }
 
     function calculateMultiTotals(mode) {
@@ -793,14 +795,12 @@
       document.getElementById('edit-kitchen-notes').value = order.notes || '';
       document.getElementById('edit-product-search').value = '';
 
-      // Medio de pago y vueltos
       const paySelect = document.getElementById('edit-payment-method');
       paySelect.value = order.paymentMethod || 'Efectivo';
       togglePaymentInputs('edit');
 
       if (order.paymentMethod === 'Efectivo') {
         document.getElementById('edit-cash-amount').value = order.cashAmount || '';
-        calculateChange('edit');
       } else if (order.paymentMethod === 'Pago Múltiple' && order.paymentBreakdown) {
         document.getElementById('edit-multi-cash').value = order.paymentBreakdown.cash || 0;
         document.getElementById('edit-multi-cash-paid').value = order.paymentBreakdown.cashPaid || 0;
@@ -822,7 +822,8 @@
         container.classList.remove('hidden');
       } else {
         container.classList.add('hidden');
-        document.getElementById('edit-delivery-cost-val').value = 0;
+        const costInput = document.getElementById('edit-delivery-cost-val');
+        if (costInput) costInput.value = 0;
       }
       calculateEditTotals();
     }
@@ -860,7 +861,8 @@
 
     function renderVisualProductPicker() {
       const container = document.getElementById('visual-product-picker');
-      const query = document.getElementById('edit-product-search').value.toLowerCase();
+      const searchEl = document.getElementById('edit-product-search');
+      const query = searchEl ? searchEl.value.toLowerCase() : '';
       container.innerHTML = '';
 
       const filtered = menuProducts.filter(p => p.name.toLowerCase().includes(query) || (p.category && p.category.toLowerCase().includes(query)));
@@ -910,12 +912,17 @@
 
     function calculateEditTotals() {
       const subtotal = editingCartItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
-      const deliveryCost = parseInt(document.getElementById('edit-delivery-cost-val').value) || 0;
+      const deliveryInput = document.getElementById('edit-delivery-cost-val');
+      const deliveryCost = deliveryInput ? (parseInt(deliveryInput.value) || 0) : 0;
       const grandTotal = subtotal + deliveryCost;
 
-      document.getElementById('edit-subtotal-val').innerText = '$' + subtotal.toLocaleString('es-CL');
-      document.getElementById('edit-delivery-disp-val').innerText = '$' + deliveryCost.toLocaleString('es-CL');
-      document.getElementById('edit-total-val').innerText = '$' + grandTotal.toLocaleString('es-CL');
+      const subEl = document.getElementById('edit-subtotal-val');
+      const delEl = document.getElementById('edit-delivery-disp-val');
+      const totEl = document.getElementById('edit-total-val');
+
+      if (subEl) subEl.innerText = '$' + subtotal.toLocaleString('es-CL');
+      if (delEl) delEl.innerText = '$' + deliveryCost.toLocaleString('es-CL');
+      if (totEl) totEl.innerText = '$' + grandTotal.toLocaleString('es-CL');
 
       calculateChange('edit');
 
@@ -935,7 +942,6 @@
         address = "Retiro en Local (Av. Picarte 3045)";
       }
 
-      // Procesar Método de Pago
       const payMethod = document.getElementById('edit-payment-method').value;
       let updateData = {
         customer: custName,
@@ -1012,7 +1018,8 @@
 
     function renderManualVisualPicker() {
       const container = document.getElementById('manual-product-picker');
-      const query = document.getElementById('manual-product-search').value.toLowerCase();
+      const searchEl = document.getElementById('manual-product-search');
+      const query = searchEl ? searchEl.value.toLowerCase() : '';
       container.innerHTML = '';
 
       const filtered = menuProducts.filter(p => p.name.toLowerCase().includes(query) || (p.category && p.category.toLowerCase().includes(query)));
