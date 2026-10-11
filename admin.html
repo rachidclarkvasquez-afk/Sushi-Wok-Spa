@@ -1,1 +1,103 @@
 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comandero Cocina - SUSHI & WOK</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-4">
+
+  <header class="flex justify-between items-center border-b border-gray-800 pb-4 mb-6">
+    <div>
+      <h1 class="text-2xl font-black text-amber-400">🥢 SUSHI & WOK - COMANDERO COCINA</h1>
+      <p class="text-xs text-gray-400">Av. Ramón Picarte 3045, Valdivia</p>
+    </div>
+    <div class="bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-2">
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> En Vivo
+    </div>
+  </header>
+
+  <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="orders-container">
+    <!-- Comandas en tiempo real -->
+  </main>
+
+  <script>
+    const firebaseConfig = {
+      databaseURL: "https://sushi-wok-89bee-default-rtdb.firebaseio.com/"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    db.ref('pedidos').on('value', (snapshot) => {
+      const data = snapshot.val();
+      const container = document.getElementById('orders-container');
+      container.innerHTML = '';
+
+      if (!data) {
+        container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-20 font-bold">Sin pedidos activos por el momento... 🥢</div>`;
+        return;
+      }
+
+      const ordersArray = Object.keys(data).map(key => ({ id: key, ...data[key] })).reverse();
+
+      ordersArray.forEach(order => {
+        let statusColor = "bg-amber-500/20 text-amber-400 border-amber-500/40";
+        if (order.status === 'En Preparación') statusColor = "bg-blue-500/20 text-blue-400 border-blue-500/40";
+        if (order.status === 'En Camino') statusColor = "bg-purple-500/20 text-purple-400 border-purple-500/40";
+        if (order.status === 'Entregado') statusColor = "bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
+
+        let itemsHtml = order.items.map(i => `
+          <div class="flex justify-between text-sm py-1 border-b border-gray-800">
+            <span><strong class="text-amber-400">${i.qty}x</strong> ${i.name} <em class="text-xs text-gray-400">${i.detail}</em></span>
+            <span class="font-bold">$${(i.price * i.qty).toLocaleString('es-CL')}</span>
+          </div>
+        `).join('');
+
+        container.innerHTML += `
+          <div class="bg-gray-800 rounded-2xl p-5 border border-gray-700 shadow-xl space-y-3">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-xs font-bold text-gray-400">HORA: ${order.date}</span>
+                <h3 class="text-lg font-black text-white mt-0.5">${order.customer}</h3>
+                <p class="text-xs text-amber-400 font-bold">📞 ${order.phone}</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg text-xs font-bold border ${statusColor}">${order.status}</span>
+            </div>
+
+            <div class="bg-gray-900/60 p-3 rounded-xl space-y-1 text-xs">
+              <p class="font-bold text-gray-300">🛵 ${order.deliveryType} ${order.km ? `(~${order.km} KM)` : ''}</p>
+              <p class="text-gray-400">📍 ${order.address}</p>
+              <p class="font-bold text-emerald-400">💳 ${order.paymentMethod} ${order.changeInfo ? '| ' + order.changeInfo : ''}</p>
+            </div>
+
+            <div class="space-y-1 my-2">
+              ${itemsHtml}
+            </div>
+
+            <div class="flex justify-between items-center text-sm font-black pt-2 border-t border-gray-700">
+              <span>TOTAL COMANDA:</span>
+              <span class="text-emerald-400 text-lg">$${order.grandTotal.toLocaleString('es-CL')}</span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-1.5 pt-2">
+              <button onclick="updateStatus('${order.id}', 'En Preparación')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] py-2 rounded-lg">👨‍🍳 Cocina</button>
+              <button onclick="updateStatus('${order.id}', 'En Camino')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] py-2 rounded-lg">🛵 Reparto</button>
+              <button onclick="updateStatus('${order.id}', 'Entregado')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] py-2 rounded-lg">✅ Entregado</button>
+            </div>
+          </div>
+        `;
+      });
+    });
+
+    function updateStatus(orderId, newStatus) {
+      db.ref(`pedidos/${orderId}`).update({ status: newStatus });
+    }
+  </script>
+</body>
+</html>
