@@ -6,7 +6,7 @@
   <title>SUSHI & WOK - Menú Digital</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase Scripts (Gratis en tiempo real) -->
+  <!-- Firebase Scripts -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -38,7 +38,7 @@
     <!-- Productos inyectados dinámicamente -->
   </main>
 
-  <!-- Modal 1: Personalizar Plato (Proteína / Ají) -->
+  <!-- Modal 1: Personalizar Plato -->
   <div id="options-modal" class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
     <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-2xl">
       <div class="flex justify-between items-center border-b pb-3">
@@ -74,7 +74,7 @@
     </div>
   </div>
 
-  <!-- Modal 2: Checkout Completo (Datos, Delivery, Pago y Vuelto) -->
+  <!-- Modal 2: Checkout Completo con Geolocalización Automática -->
   <div id="checkout-modal" class="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden overflow-y-auto">
     <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4 shadow-2xl my-auto">
       <div class="flex justify-between items-center border-b pb-2">
@@ -97,26 +97,26 @@
         <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Tipo de Entrega *</label>
         <div class="grid grid-cols-2 gap-2">
           <button type="button" id="btn-delivery" onclick="setDeliveryType('delivery')" class="py-2.5 px-3 rounded-xl border border-amber-500 bg-amber-50 text-amber-700 font-bold text-xs flex items-center justify-center gap-1">🛵 Domicilio</button>
-          <button type="button" id="btn-pickup" onclick="setDeliveryType('pickup')" class="py-2.5 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-bold text-xs flex items-center justify-center gap-1">🛍️ Para Llevar / Retiro</button>
+          <button type="button" id="btn-pickup" onclick="setDeliveryType('pickup')" class="py-2.5 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-bold text-xs flex items-center justify-center gap-1">🛍️ Retiro en Local</button>
         </div>
       </div>
 
-      <!-- Campo Dirección y Distancia (si es Delivery) -->
-      <div id="delivery-fields" class="space-y-3">
+      <!-- Sección de Ubicación Automática (si es Delivery) -->
+      <div id="delivery-fields" class="space-y-3 bg-amber-50/50 p-3.5 rounded-2xl border border-amber-200">
+        <label class="block text-xs font-extrabold text-amber-900 uppercase">📍 Cálculo Automático de Despacho ($1.000 / km)</label>
+        
+        <button type="button" onclick="detectUserLocation()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95">
+          <span>📍 Usar mi ubicación actual para calcular distancia</span>
+        </button>
+
         <div>
-          <label class="block text-xs font-bold text-gray-600 uppercase">Dirección de Entrega *</label>
-          <input type="text" id="cust-address" placeholder="Calle, Número, Villa o Sector" class="w-full mt-1 p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-semibold focus:outline-amber-500">
+          <label class="block text-[11px] font-bold text-gray-600 uppercase">Dirección escrita (Calle y Número) *</label>
+          <input type="text" id="cust-address" placeholder="Ej: Yungay 750, Valdivia" class="w-full mt-1 p-2.5 bg-white rounded-xl border border-gray-200 text-xs font-semibold focus:outline-amber-500">
         </div>
-        <div>
-          <label class="block text-xs font-bold text-gray-600 uppercase">Distancia estimada ($1.000 / km desde el local) *</label>
-          <select id="cust-km" onchange="calculateGrandTotal()" class="w-full mt-1 p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold focus:outline-amber-500">
-            <option value="1">1 KM ($1.000 despacho)</option>
-            <option value="2">2 KM ($2.000 despacho)</option>
-            <option value="3">3 KM ($3.000 despacho)</option>
-            <option value="4">4 KM ($4.000 despacho)</option>
-            <option value="5">5 KM ($5.000 despacho)</option>
-            <option value="6">6 KM o más ($6.000 despacho)</option>
-          </select>
+
+        <div class="flex justify-between items-center text-xs pt-1">
+          <span class="text-gray-600 font-bold">Distancia calculada:</span>
+          <span id="calculated-km-label" class="font-black text-amber-700">1.0 km ($1.000)</span>
         </div>
       </div>
 
@@ -126,7 +126,7 @@
         <select id="cust-payment" onchange="toggleCashField()" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold focus:outline-amber-500">
           <option value="Efectivo">💵 Efectivo</option>
           <option value="Transferencia">🏦 Transferencia Bancaria</option>
-          <option value="Tarjeta">💳 Tarjeta (Débito/Crédito POS)</option>
+          <option value="Tarjeta">💳 Tarjeta (POS en destino)</option>
         </select>
       </div>
 
@@ -163,9 +163,14 @@
   <script>
     const WHATSAPP_PHONE = "56932649489";
 
-    // Configuracion de Firebase para sincronizar con la cocina (Pestaña admin.html)
+    // Coordenadas fijas de tu local: Av. Ramón Picarte 3045, Valdivia
+    const STORE_LAT = -39.8251;
+    const STORE_LNG = -73.2355;
+
+    let calculatedKm = 1; // Por defecto 1 km si no activa ubicación
+
     const firebaseConfig = {
-      databaseURL: "https://sushi-wok-default-rtdb.firebaseio.com/" // Reemplazar con tu URL de Firebase Realtime Database
+      databaseURL: "https://sushi-wok-default-rtdb.firebaseio.com/"
     };
     if (typeof firebase !== 'undefined' && firebaseConfig.databaseURL !== "") {
       firebase.initializeApp(firebaseConfig);
@@ -263,7 +268,40 @@
       document.getElementById('cart-total').innerText = '$' + subtotal.toLocaleString('es-CL');
     }
 
-    /* Lógica del Checkout */
+    /* Geolocalización y cálculo de distancia */
+    function detectUserLocation() {
+      if (!navigator.geolocation) {
+        alert("Tu navegador no soporta geolocalización.");
+        return;
+      }
+      alert("Obteniendo tu ubicación exacta...");
+      navigator.geolocation.getCurrentPosition((position) => {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+
+        // Calcular distancia en KM usando la formula Haversine
+        const R = 6371; // Radio de la tierra en km
+        const dLat = (userLat - STORE_LAT) * Math.PI / 180;
+        const dLon = (userLng - STORE_LNG) * Math.PI / 180;
+        const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(STORE_LAT * Math.PI / 180) * Math.cos(userLat * Math.PI / 180) * 
+          Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c; // Distancia en KM
+
+        calculatedKm = Math.max(1, Math.ceil(distance)); // Mínimo 1 km
+        const cost = calculatedKm * 1000;
+
+        document.getElementById('calculated-km-labelinnerText' || 'calculated-km-label').innerText = `${calculatedKm} km ($${cost.toLocaleString('es-CL')})`;
+        document.getElementById('cust-address').value = `Ubicación GPS (${userLat.toFixed(4)}, ${userLng.toFixed(4)})`;
+        calculateGrandTotal();
+        alert(`¡Ubicación detectada! Distancia: ~${calculatedKm} km. Despacho: $${cost.toLocaleString('es-CL')}`);
+      }, (error) => {
+        alert("No se pudo obtener tu ubicación. Por favor escribe tu dirección manual.");
+      });
+    }
+
     function openCheckoutModal() {
       if (cartList.length === 0) {
         alert("Agrega productos a tu pedido antes de continuar.");
@@ -298,8 +336,7 @@
       const subtotal = cartList.reduce((sum, item) => sum + (item.price * item.qty), 0);
       let deliveryCost = 0;
       if (selectedDeliveryType === 'delivery') {
-        const km = parseInt(document.getElementById('cust-km').value) || 1;
-        deliveryCost = km * 1000;
+        deliveryCost = calculatedKm * 1000;
       }
       const grandTotal = subtotal + deliveryCost;
 
@@ -321,9 +358,9 @@
       let km = 0;
       if (selectedDeliveryType === 'delivery') {
         address = document.getElementById('cust-address').value.trim();
-        km = document.getElementById('cust-km').value;
+        km = calculatedKm;
         if (!address) {
-          alert("Por favor ingresa la dirección de entrega.");
+          alert("Por favor indica tu dirección o usa el botón de ubicación.");
           return;
         }
       }
@@ -341,7 +378,6 @@
 
       const totals = calculateGrandTotal();
 
-      // Guardar en la Base de Datos para el Comandero de Cocina (Si está conectado Firebase)
       const orderData = {
         timestamp: Date.now(),
         date: new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
@@ -363,14 +399,13 @@
         firebase.database().ref('pedidos').push(orderData);
       }
 
-      // Generar mensaje formateado para WhatsApp
       let text = "🥢 *NUEVO PEDIDO - SUSHI & WOK*\n";
       text += "----------------------------------\n";
       text += `👤 *Cliente:* ${name}\n`;
       text += `📞 *Teléfono:* ${phone}\n`;
       text += `🛵 *Tipo:* ${orderData.deliveryType}\n`;
       if (selectedDeliveryType === 'delivery') {
-        text += `📍 *Dirección:* ${address} (${km} KM)\n`;
+        text += `📍 *Dirección:* ${address} (~${km} KM)\n`;
       }
       text += `💳 *Pago:* ${payment} ${changeInfo ? '\n💵 ' + changeInfo : ''}\n`;
       text += "----------------------------------\n";
