@@ -854,8 +854,12 @@
     }
 
     function closeEditModal() {
-      document.getElementById('edit-order-modal').classList.add('hidden');
-    }
+  const modal = document.getElementById('edit-order-modal');
+  if (modal) modal.classList.add('hidden');
+  editingOrderId = null;
+  editingCartItems = [];
+}
+
 
     function renderEditItems() {
       const container = document.getElementById('edit-items-container');
