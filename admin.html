@@ -158,14 +158,31 @@
     </div>
   </section>
 
-  <!-- MODAL EDITAR COMANDA -->
+  <!-- MODAL EDITAR COMANDA (PAGOS MÚLTIPLES + REGISTRO CLIENTES) -->
   <div id="edit-order-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-4 hidden">
     <div class="bg-gray-900 w-full max-w-xl rounded-3xl p-5 border border-gray-800 space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-gray-800 pb-3">
-        <h3 class="font-black text-lg text-amber-400">✏️ Modificar Pedido de <span id="edit-modal-client"></span></h3>
+        <h3 class="font-black text-lg text-amber-400">✏️ Modificar Pedido <span id="edit-modal-order-num"></span></h3>
         <button onclick="closeEditModal()" class="text-gray-400 font-bold text-2xl">✕</button>
       </div>
 
+      <!-- DATOS CLIENTE CON BÚSQUEDA AUTOMÁTICA -->
+      <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-2 text-xs">
+        <label class="block font-bold text-amber-400 uppercase">👤 Datos del Cliente:</label>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <label class="block text-gray-400 font-bold">Nombre Cliente:</label>
+            <input type="text" id="edit-cust-name" oninput="searchCustomers(this.value, 'edit')" class="w-full bg-gray-900 border border-gray-700 text-white p-2 rounded-xl font-bold">
+            <div id="edit-cust-suggestions" class="bg-gray-800 border border-gray-700 rounded-xl mt-1 hidden max-h-32 overflow-y-auto"></div>
+          </div>
+          <div>
+            <label class="block text-gray-400 font-bold">Teléfono:</label>
+            <input type="text" id="edit-cust-phone" class="w-full bg-gray-900 border border-gray-700 text-white p-2 rounded-xl font-bold">
+          </div>
+        </div>
+      </div>
+
+      <!-- ENTREGA Y DIRECCIÓN -->
       <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-2 text-xs">
         <label class="block font-bold text-amber-400 uppercase">🛵 Tipo de Entrega:</label>
         <select id="edit-delivery-type" onchange="toggleEditDeliveryFields()" class="w-full bg-gray-900 border border-gray-700 text-white font-bold p-2 rounded-xl focus:outline-amber-500">
@@ -185,22 +202,66 @@
         </div>
       </div>
 
+      <!-- MODIFICACIÓN DE MEDIO DE PAGO Y DESGLOSE MÚLTIPLE -->
+      <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-2 text-xs">
+        <label class="block font-bold text-amber-400 uppercase">💳 Medio de Pago:</label>
+        <select id="edit-payment-method" onchange="togglePaymentInputs('edit')" class="w-full bg-gray-900 border border-gray-700 text-emerald-400 font-bold p-2 rounded-xl">
+          <option value="Efectivo">💵 Efectivo</option>
+          <option value="Tarjeta">💳 Tarjeta / POS</option>
+          <option value="Transferencia">🏦 Transferencia</option>
+          <option value="Pago Múltiple">🔀 Pago Múltiple / Combinado</option>
+        </select>
+
+        <!-- Campo Efectivo / Vuelto -->
+        <div id="edit-cash-details" class="space-y-1 pt-1">
+          <div class="flex items-center gap-2">
+            <label class="text-gray-400 font-bold min-w-[100px]">Paga con ($):</label>
+            <input type="number" id="edit-cash-amount" oninput="calculateChange('edit')" placeholder="Ej: 20000" class="flex-1 bg-gray-900 border border-gray-700 text-amber-400 font-bold p-2 rounded-xl">
+          </div>
+          <p id="edit-change-display" class="text-emerald-400 font-black text-right pt-1">Vuelto: $0</p>
+        </div>
+
+        <!-- Campos Pago Múltiple -->
+        <div id="edit-multi-payment-details" class="space-y-2 pt-1 hidden border-t border-gray-800 mt-2">
+          <p class="text-[11px] text-gray-400 italic">Ingresa el monto pagado con cada medio:</p>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-300 font-bold min-w-[90px]">💵 Efectivo:</span>
+            <input type="number" id="edit-multi-cash" oninput="calculateMultiTotals('edit')" value="0" class="flex-1 bg-gray-900 border border-gray-700 text-white font-bold p-1.5 rounded-xl">
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-300 font-bold min-w-[90px]">Paga con ($):</span>
+            <input type="number" id="edit-multi-cash-paid" oninput="calculateMultiTotals('edit')" value="0" placeholder="Con cuánto paga" class="flex-1 bg-gray-900 border border-gray-700 text-amber-400 font-bold p-1.5 rounded-xl">
+            <span id="edit-multi-change" class="text-emerald-400 font-bold text-[11px]">Vuelto: $0</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-300 font-bold min-w-[90px]">💳 Tarjeta:</span>
+            <input type="number" id="edit-multi-card" oninput="calculateMultiTotals('edit')" value="0" class="flex-1 bg-gray-900 border border-gray-700 text-white font-bold p-1.5 rounded-xl">
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-300 font-bold min-w-[90px]">🏦 Transfer.:</span>
+            <input type="number" id="edit-multi-transfer" oninput="calculateMultiTotals('edit')" value="0" class="flex-1 bg-gray-900 border border-gray-700 text-white font-bold p-1.5 rounded-xl">
+          </div>
+          <p id="edit-multi-summary" class="text-right font-black text-xs text-amber-400 pt-1">Suma Pagos: $0</p>
+        </div>
+      </div>
+
+      <!-- OBSERVACIÓN / NOTAS -->
       <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-1 text-xs">
         <label class="block font-bold text-amber-400 uppercase">📝 Observación / Notas para Cocina:</label>
         <textarea id="edit-kitchen-notes" rows="2" placeholder="Ej: Sin sésamo, entregar a las 20:30..." class="w-full bg-gray-900 border border-gray-700 text-white p-2 rounded-xl text-xs font-semibold focus:outline-amber-500"></textarea>
       </div>
 
+      <!-- PRODUCTOS -->
       <div class="space-y-2">
         <label class="block text-xs font-bold text-amber-400 uppercase">📋 Productos en la Comanda Actual:</label>
         <div id="edit-items-container" class="space-y-2 max-h-36 overflow-y-auto p-1 bg-gray-950/50 rounded-xl"></div>
       </div>
 
+      <!-- BUSCADOR RÁPIDO DE PRODUCTOS -->
       <div class="space-y-2 pt-2 border-t border-gray-800">
-        <div class="flex justify-between items-center">
-          <label class="text-xs font-bold text-amber-400 uppercase">🍱 Agregar Productos:</label>
-        </div>
-        <input type="text" id="edit-product-search" oninput="renderVisualProductPicker()" placeholder="🔍 Escribe para buscar plato o roll..." class="w-full bg-gray-950 border border-gray-700 text-white text-xs p-2 rounded-xl font-semibold focus:outline-amber-500">
-        <div id="visual-product-picker" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1 no-scrollbar"></div>
+        <label class="block text-xs font-bold text-amber-400 uppercase">🍱 Agregar Productos:</label>
+        <input type="text" id="edit-product-search" oninput="renderVisualProductPicker()" placeholder="🔍 Buscar plato..." class="w-full bg-gray-950 border border-gray-700 text-white text-xs p-2 rounded-xl font-semibold">
+        <div id="visual-product-picker" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1 no-scrollbar"></div>
       </div>
 
       <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-1 text-xs">
@@ -226,7 +287,8 @@
       <div class="grid grid-cols-2 gap-2 text-xs">
         <div>
           <label class="block font-bold text-gray-400">Nombre Cliente *</label>
-          <input type="text" id="manual-cust-name" placeholder="Ej: Cliente Mesón" class="w-full mt-1 p-2 bg-gray-950 border border-gray-700 text-white rounded-xl font-bold">
+          <input type="text" id="manual-cust-name" oninput="searchCustomers(this.value, 'manual')" placeholder="Escribe para buscar cliente..." class="w-full mt-1 p-2 bg-gray-950 border border-gray-700 text-white rounded-xl font-bold">
+          <div id="manual-cust-suggestions" class="bg-gray-800 border border-gray-700 rounded-xl mt-1 hidden max-h-32 overflow-y-auto"></div>
         </div>
         <div>
           <label class="block font-bold text-gray-400">Teléfono</label>
@@ -237,18 +299,57 @@
       <div class="grid grid-cols-2 gap-2 text-xs">
         <div>
           <label class="block font-bold text-gray-400">Tipo Entrega</label>
-          <select id="manual-delivery-type" class="w-full mt-1 p-2 bg-gray-950 border border-gray-700 text-white rounded-xl font-bold">
+          <select id="manual-delivery-type" onchange="toggleManualDeliveryAddress()" class="w-full mt-1 p-2 bg-gray-950 border border-gray-700 text-white rounded-xl font-bold">
             <option value="Retiro en Local">🛍️ Retiro en Local / Mesón</option>
             <option value="Domicilio">🛵 Domicilio</option>
           </select>
         </div>
         <div>
           <label class="block font-bold text-gray-400">Medio Pago</label>
-          <select id="manual-payment" class="w-full mt-1 p-2 bg-gray-950 border border-gray-700 text-white rounded-xl font-bold">
+          <select id="manual-payment" onchange="togglePaymentInputs('manual')" class="w-full mt-1 p-2 bg-gray-950 border border-gray-700 text-white rounded-xl font-bold">
             <option value="Efectivo">💵 Efectivo</option>
-            <option value="Transferencia">🏦 Transferencia</option>
             <option value="Tarjeta">💳 Tarjeta / POS</option>
+            <option value="Transferencia">🏦 Transferencia</option>
+            <option value="Pago Múltiple">🔀 Pago Múltiple / Combinado</option>
           </select>
+        </div>
+      </div>
+
+      <!-- Dirección si es Domicilio -->
+      <div id="manual-address-container" class="text-xs hidden">
+        <label class="block font-bold text-gray-400">Dirección de Entrega:</label>
+        <input type="text" id="manual-cust-address" placeholder="Ej: Baltazar Mejías 4276" class="w-full mt-1 p-2 bg-gray-950 border border-gray-700 text-white rounded-xl font-semibold">
+      </div>
+
+      <!-- Detalle de Pago en Pedido Manual -->
+      <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-2 text-xs">
+        <div id="manual-cash-details" class="space-y-1">
+          <div class="flex items-center gap-2">
+            <label class="text-gray-400 font-bold min-w-[100px]">Paga con ($):</label>
+            <input type="number" id="manual-cash-amount" oninput="calculateChange('manual')" placeholder="Monto abonado" class="flex-1 bg-gray-900 border border-gray-700 text-amber-400 font-bold p-1.5 rounded-xl">
+          </div>
+          <p id="manual-change-display" class="text-emerald-400 font-black text-right pt-0.5">Vuelto: $0</p>
+        </div>
+
+        <div id="manual-multi-payment-details" class="space-y-2 pt-1 hidden border-t border-gray-800">
+          <p class="text-[11px] text-gray-400 italic">Desglose de Pago Múltiple:</p>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-300 font-bold min-w-[90px]">💵 Efectivo:</span>
+            <input type="number" id="manual-multi-cash" oninput="calculateMultiTotals('manual')" value="0" class="flex-1 bg-gray-900 border border-gray-700 text-white font-bold p-1 rounded-xl">
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-300 font-bold min-w-[90px]">Paga con ($):</span>
+            <input type="number" id="manual-multi-cash-paid" oninput="calculateMultiTotals('manual')" value="0" class="flex-1 bg-gray-900 border border-gray-700 text-amber-400 font-bold p-1 rounded-xl">
+            <span id="manual-multi-change" class="text-emerald-400 font-bold text-[11px]">Vuelto: $0</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-300 font-bold min-w-[90px]">💳 Tarjeta:</span>
+            <input type="number" id="manual-multi-card" oninput="calculateMultiTotals('manual')" value="0" class="flex-1 bg-gray-900 border border-gray-700 text-white font-bold p-1 rounded-xl">
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-300 font-bold min-w-[90px]">🏦 Transfer.:</span>
+            <input type="number" id="manual-multi-transfer" oninput="calculateMultiTotals('manual')" value="0" class="flex-1 bg-gray-900 border border-gray-700 text-white font-bold p-1 rounded-xl">
+          </div>
         </div>
       </div>
 
@@ -264,8 +365,8 @@
 
       <div class="space-y-2 pt-2 border-t border-gray-800">
         <label class="block text-xs font-bold text-amber-400 uppercase">🍱 Buscar y Agregar Productos:</label>
-        <input type="text" id="manual-product-search" oninput="renderManualVisualPicker()" placeholder="🔍 Escribe para buscar plato o roll..." class="w-full bg-gray-950 border border-gray-700 text-white text-xs p-2 rounded-xl font-semibold focus:outline-amber-500">
-        <div id="manual-product-picker" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1 no-scrollbar"></div>
+        <input type="text" id="manual-product-search" oninput="renderManualVisualPicker()" placeholder="🔍 Buscar plato..." class="w-full bg-gray-950 border border-gray-700 text-white text-xs p-2 rounded-xl font-semibold">
+        <div id="manual-product-picker" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1 no-scrollbar"></div>
       </div>
 
       <div class="flex justify-between items-center bg-gray-950 p-3 rounded-xl border border-gray-800 text-sm font-black">
@@ -289,6 +390,7 @@
     const db = firebase.database();
 
     let allOrders = {};
+    let savedCustomers = {};
     let currentLiveFilter = 'Todos';
     let menuProducts = [];
     let audioAllowed = false;
@@ -328,6 +430,10 @@
       renderReports();
     });
 
+    db.ref('clientes').on('value', (snapshot) => {
+      savedCustomers = snapshot.val() || {};
+    });
+
     db.ref('menu').on('value', (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -349,6 +455,97 @@
       const closeVal = document.getElementById('sched-close-time').value;
       db.ref('horario').set({ open: openVal, close: closeVal });
       alert("¡Horario guardado correctamente!");
+    }
+
+    // REGISTRO Y AUTOCOMPLETADO DE CLIENTES
+    function saveOrUpdateCustomer(name, phone, address) {
+      if (!phone || phone === "+56900000000") return;
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      if (cleanPhone.length < 8) return;
+
+      db.ref(`clientes/${cleanPhone}`).set({
+        name: name,
+        phone: phone,
+        address: address || ""
+      });
+    }
+
+    function searchCustomers(query, mode) {
+      const suggBox = document.getElementById(`${mode}-cust-suggestions`);
+      if (!query || query.length < 2) {
+        suggBox.classList.add('hidden');
+        return;
+      }
+
+      const q = query.toLowerCase();
+      const matches = Object.values(savedCustomers).filter(c => 
+        (c.name && c.name.toLowerCase().includes(q)) || 
+        (c.phone && c.phone.includes(q))
+      );
+
+      if (matches.length === 0) {
+        suggBox.classList.add('hidden');
+        return;
+      }
+
+      suggBox.innerHTML = matches.map(c => `
+        <div onclick="selectCustomer('${c.name}', '${c.phone}', '${c.address}', '${mode}')" class="p-2 border-b border-gray-700/50 hover:bg-gray-700 cursor-pointer text-xs">
+          <p class="font-bold text-amber-400">${c.name} <span class="text-gray-400">(${c.phone})</span></p>
+          <p class="text-[10px] text-gray-300 truncate">📍 ${c.address || 'Sin dirección'}</p>
+        </div>
+      `).join('');
+      suggBox.classList.remove('hidden');
+    }
+
+    function selectCustomer(name, phone, address, mode) {
+      document.getElementById(`${mode}-cust-name`).value = name;
+      document.getElementById(`${mode}-cust-phone`).value = phone;
+      if (mode === 'edit') {
+        document.getElementById('edit-address-val').value = address;
+      } else {
+        document.getElementById('manual-cust-address').value = address;
+      }
+      document.getElementById(`${mode}-cust-suggestions`).classList.add('hidden');
+    }
+
+    // MANEJO Y CÁLCULO DE PAGOS Y VUELTOS
+    function togglePaymentInputs(mode) {
+      const method = document.getElementById(`${mode}-payment-method` || `${mode}-payment`).value;
+      const cashBox = document.getElementById(`${mode}-cash-details`);
+      const multiBox = document.getElementById(`${mode}-multi-payment-details`);
+
+      if (method === 'Efectivo') {
+        cashBox.classList.remove('hidden');
+        multiBox.classList.add('hidden');
+      } else if (method === 'Pago Múltiple') {
+        cashBox.classList.add('hidden');
+        multiBox.classList.remove('hidden');
+      } else {
+        cashBox.classList.add('hidden');
+        multiBox.classList.add('hidden');
+      }
+    }
+
+    function calculateChange(mode) {
+      const totals = mode === 'edit' ? calculateEditTotals() : { grandTotal: manualCartItems.reduce((s, i) => s + (i.price * i.qty), 0) };
+      const paid = parseInt(document.getElementById(`${mode}-cash-amount`).value) || 0;
+      const change = paid - totals.grandTotal;
+      document.getElementById(`${mode}-change-display`).innerText = change >= 0 ? `Vuelto: $${change.toLocaleString('es-CL')}` : `Falta: $${Math.abs(change).toLocaleString('es-CL')}`;
+    }
+
+    function calculateMultiTotals(mode) {
+      const cash = parseInt(document.getElementById(`${mode}-multi-cash`).value) || 0;
+      const cashPaid = parseInt(document.getElementById(`${mode}-multi-cash-paid`).value) || 0;
+      const card = parseInt(document.getElementById(`${mode}-multi-card`).value) || 0;
+      const transfer = parseInt(document.getElementById(`${mode}-multi-transfer`).value) || 0;
+
+      const change = cashPaid - cash;
+      const changeEl = document.getElementById(`${mode}-multi-change`);
+      if (changeEl) changeEl.innerText = change >= 0 ? `Vuelto: $${change.toLocaleString('es-CL')}` : `Falta: $${Math.abs(change).toLocaleString('es-CL')}`;
+
+      const sum = cash + card + transfer;
+      const summaryEl = document.getElementById(`${mode}-multi-summary`);
+      if (summaryEl) summaryEl.innerText = `Suma Pagos: $${sum.toLocaleString('es-CL')}`;
     }
 
     function switchTab(tab) {
@@ -419,6 +616,13 @@
 
         const formattedOrderNum = "#" + String(order.orderNum).padStart(3, '0');
 
+        let paymentDetailHtml = order.paymentMethod;
+        if (order.paymentBreakdown) {
+          paymentDetailHtml = `🔀 Múltiple: Efe: $${(order.paymentBreakdown.cash||0).toLocaleString('es-CL')} | Tarj: $${(order.paymentBreakdown.card||0).toLocaleString('es-CL')} | Transf: $${(order.paymentBreakdown.transfer||0).toLocaleString('es-CL')}`;
+        } else if (order.cashAmount && order.changeAmount >= 0) {
+          paymentDetailHtml += ` (Paga $${order.cashAmount.toLocaleString('es-CL')} | Vuelto $${order.changeAmount.toLocaleString('es-CL')})`;
+        }
+
         container.innerHTML += `
           <div class="bg-gray-900 rounded-2xl p-4 border border-gray-800 shadow-xl space-y-3">
             <div class="flex justify-between items-start">
@@ -439,7 +643,7 @@
             <div class="bg-gray-950 p-2.5 rounded-xl space-y-1 text-xs border border-gray-800/80">
               <p class="font-bold text-gray-300">🛵 ${order.deliveryType} ${order.km ? `(~${order.km} KM)` : ''}</p>
               <p class="text-gray-400 line-clamp-1">📍 ${order.address}</p>
-              <p class="font-bold text-emerald-400">💳 ${order.paymentMethod} ${order.changeInfo ? '| ' + order.changeInfo : ''}</p>
+              <p class="font-bold text-emerald-400">💳 ${paymentDetailHtml}</p>
               ${order.notes ? `<p class="mt-1 text-amber-300 font-bold bg-amber-500/10 p-1.5 rounded-lg border border-amber-500/20">📝 NOTA COCINA: ${order.notes}</p>` : ''}
             </div>
 
@@ -547,7 +751,7 @@
             <div class="bg-gray-950 p-2.5 rounded-xl space-y-1 text-xs border border-gray-800/80">
               <p class="font-bold text-gray-300">🛵 ${order.deliveryType} ${order.km ? `(~${order.km} KM)` : ''}</p>
               <p class="text-gray-400 line-clamp-1">📍 ${order.address}</p>
-              <p class="font-bold text-emerald-400">💳 ${order.paymentMethod} ${order.changeInfo ? '| ' + order.changeInfo : ''}</p>
+              <p class="font-bold text-emerald-400">💳 ${order.paymentMethod}</p>
               ${order.notes ? `<p class="mt-1 text-amber-300 font-bold bg-amber-500/10 p-1 rounded">📝 NOTA: ${order.notes}</p>` : ''}
             </div>
 
@@ -571,10 +775,14 @@
 
     function openEditModal(orderId) {
       editingOrderId = orderId;
-      const order = allOrders[orderId];
+      const ordersArray = Object.keys(allOrders).map((key, index) => ({ id: key, orderNum: index + 1, ...allOrders[key] }));
+      const order = ordersArray.find(o => o.id === orderId);
       if (!order) return;
 
-      document.getElementById('edit-modal-client').innerText = order.customer;
+      document.getElementById('edit-modal-order-num').innerText = "#" + String(order.orderNum).padStart(3, '0');
+      document.getElementById('edit-cust-name').value = order.customer || "";
+      document.getElementById('edit-cust-phone').value = order.phone || "";
+
       editingCartItems = JSON.parse(JSON.stringify(order.items || []));
 
       const delTypeSelect = document.getElementById('edit-delivery-type');
@@ -584,6 +792,22 @@
       document.getElementById('edit-delivery-cost-val').value = order.deliveryCost || 0;
       document.getElementById('edit-kitchen-notes').value = order.notes || '';
       document.getElementById('edit-product-search').value = '';
+
+      // Medio de pago y vueltos
+      const paySelect = document.getElementById('edit-payment-method');
+      paySelect.value = order.paymentMethod || 'Efectivo';
+      togglePaymentInputs('edit');
+
+      if (order.paymentMethod === 'Efectivo') {
+        document.getElementById('edit-cash-amount').value = order.cashAmount || '';
+        calculateChange('edit');
+      } else if (order.paymentMethod === 'Pago Múltiple' && order.paymentBreakdown) {
+        document.getElementById('edit-multi-cash').value = order.paymentBreakdown.cash || 0;
+        document.getElementById('edit-multi-cash-paid').value = order.paymentBreakdown.cashPaid || 0;
+        document.getElementById('edit-multi-card').value = order.paymentBreakdown.card || 0;
+        document.getElementById('edit-multi-transfer').value = order.paymentBreakdown.transfer || 0;
+        calculateMultiTotals('edit');
+      }
 
       toggleEditDeliveryFields();
       renderEditItems();
@@ -693,6 +917,8 @@
       document.getElementById('edit-delivery-disp-val').innerText = '$' + deliveryCost.toLocaleString('es-CL');
       document.getElementById('edit-total-val').innerText = '$' + grandTotal.toLocaleString('es-CL');
 
+      calculateChange('edit');
+
       return { subtotal, deliveryCost, grandTotal };
     }
 
@@ -702,20 +928,55 @@
       const delType = document.getElementById('edit-delivery-type').value;
       let address = document.getElementById('edit-address-val').value.trim();
       const notes = document.getElementById('edit-kitchen-notes').value.trim();
+      const custName = document.getElementById('edit-cust-name').value.trim() || "Cliente";
+      const custPhone = document.getElementById('edit-cust-phone').value.trim() || "+56900000000";
 
       if (delType === 'Retiro en Local') {
         address = "Retiro en Local (Av. Picarte 3045)";
       }
 
-      db.ref(`pedidos/${editingOrderId}`).update({
+      // Procesar Método de Pago
+      const payMethod = document.getElementById('edit-payment-method').value;
+      let updateData = {
+        customer: custName,
+        phone: custPhone,
         items: editingCartItems,
         deliveryType: delType,
         address: address,
         deliveryCost: totals.deliveryCost,
         subtotal: totals.subtotal,
         grandTotal: totals.grandTotal,
-        notes: notes
-      });
+        notes: notes,
+        paymentMethod: payMethod
+      };
+
+      if (payMethod === 'Efectivo') {
+        const cashAmount = parseInt(document.getElementById('edit-cash-amount').value) || totals.grandTotal;
+        updateData.cashAmount = cashAmount;
+        updateData.changeAmount = cashAmount - totals.grandTotal;
+        updateData.paymentBreakdown = null;
+      } else if (payMethod === 'Pago Múltiple') {
+        const cash = parseInt(document.getElementById('edit-multi-cash').value) || 0;
+        const cashPaid = parseInt(document.getElementById('edit-multi-cash-paid').value) || 0;
+        const card = parseInt(document.getElementById('edit-multi-card').value) || 0;
+        const transfer = parseInt(document.getElementById('edit-multi-transfer').value) || 0;
+
+        updateData.paymentBreakdown = {
+          cash: cash,
+          cashPaid: cashPaid,
+          change: cashPaid - cash,
+          card: card,
+          transfer: transfer,
+          totalPaid: cash + card + transfer
+        };
+      } else {
+        updateData.cashAmount = null;
+        updateData.changeAmount = null;
+        updateData.paymentBreakdown = null;
+      }
+
+      db.ref(`pedidos/${editingOrderId}`).update(updateData);
+      saveOrUpdateCustomer(custName, custPhone, address);
 
       closeEditModal();
       alert("¡Comanda actualizada correctamente!");
@@ -723,13 +984,26 @@
 
     function openNewManualOrderModal() {
       manualCartItems = [];
-      document.getElementById('manual-cust-name').value = "Cliente Mesón";
-      document.getElementById('manual-cust-phone').value = "+56900000000";
+      document.getElementById('manual-cust-name').value = "";
+      document.getElementById('manual-cust-phone').value = "";
+      document.getElementById('manual-cust-address').value = "";
       document.getElementById('manual-kitchen-notes').value = "";
       document.getElementById('manual-product-search').value = "";
+      document.getElementById('manual-cash-amount').value = "";
+
+      document.getElementById('manual-payment').value = 'Efectivo';
+      togglePaymentInputs('manual');
+
       renderManualItems();
       renderManualVisualPicker();
       document.getElementById('manual-order-modal').classList.remove('hidden');
+    }
+
+    function toggleManualDeliveryAddress() {
+      const type = document.getElementById('manual-delivery-type').value;
+      const box = document.getElementById('manual-address-container');
+      if (type === 'Domicilio') box.classList.remove('hidden');
+      else box.classList.add('hidden');
     }
 
     function closeManualOrderModal() {
@@ -793,6 +1067,7 @@
       });
 
       document.getElementById('manual-total-val').innerText = '$' + total.toLocaleString('es-CL');
+      calculateChange('manual');
     }
 
     function changeManualQty(idx, delta) {
@@ -812,16 +1087,17 @@
       const delType = document.getElementById('manual-delivery-type').value;
       const payment = document.getElementById('manual-payment').value;
       const notes = document.getElementById('manual-kitchen-notes').value.trim();
+      const address = delType === 'Domicilio' ? (document.getElementById('manual-cust-address').value.trim() || "Dirección ingresada en mesón") : "Retiro en Local (Av. Picarte 3045)";
 
       const total = manualCartItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
 
-      const orderData = {
+      let orderData = {
         timestamp: Date.now(),
         date: new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
         customer: name,
         phone: phone,
         deliveryType: delType,
-        address: delType === 'Domicilio' ? "Dirección ingresada en mesón" : "Retiro en Local (Av. Picarte 3045)",
+        address: address,
         km: 0,
         paymentMethod: payment,
         items: manualCartItems,
@@ -832,7 +1108,29 @@
         notes: notes
       };
 
+      if (payment === 'Efectivo') {
+        const cashPaid = parseInt(document.getElementById('manual-cash-amount').value) || total;
+        orderData.cashAmount = cashPaid;
+        orderData.changeAmount = cashPaid - total;
+      } else if (payment === 'Pago Múltiple') {
+        const cash = parseInt(document.getElementById('manual-multi-cash').value) || 0;
+        const cashPaid = parseInt(document.getElementById('manual-multi-cash-paid').value) || 0;
+        const card = parseInt(document.getElementById('manual-multi-card').value) || 0;
+        const transfer = parseInt(document.getElementById('manual-multi-transfer').value) || 0;
+
+        orderData.paymentBreakdown = {
+          cash: cash,
+          cashPaid: cashPaid,
+          change: cashPaid - cash,
+          card: card,
+          transfer: transfer,
+          totalPaid: cash + card + transfer
+        };
+      }
+
       db.ref('pedidos').push(orderData);
+      saveOrUpdateCustomer(name, phone, address);
+
       closeManualOrderModal();
       alert("¡Pedido ingresado correctamente y enviado a cocina!");
     }
@@ -897,6 +1195,17 @@
         </div>
       `).join('');
 
+      let paymentTicketTxt = `<strong>MEDIO DE PAGO:</strong> ${o.paymentMethod}<br>`;
+      if (o.paymentBreakdown) {
+        paymentTicketTxt += `<div style="padding:2px 0;"><strong>DESGLOSE PAGO MÚLTIPLE:</strong><br>`;
+        if (o.paymentBreakdown.cash > 0) paymentTicketTxt += `- Efectivo: $${o.paymentBreakdown.cash.toLocaleString('es-CL')} (Pagó: $${(o.paymentBreakdown.cashPaid||0).toLocaleString('es-CL')} | Vuelto: $${(o.paymentBreakdown.change||0).toLocaleString('es-CL')})<br>`;
+        if (o.paymentBreakdown.card > 0) paymentTicketTxt += `- Tarjeta: $${o.paymentBreakdown.card.toLocaleString('es-CL')}<br>`;
+        if (o.paymentBreakdown.transfer > 0) paymentTicketTxt += `- Transferencia: $${o.paymentBreakdown.transfer.toLocaleString('es-CL')}<br>`;
+        paymentTicketTxt += `</div>`;
+      } else if (o.cashAmount && o.changeAmount >= 0) {
+        paymentTicketTxt += `<strong>PAGA CON:</strong> $${o.cashAmount.toLocaleString('es-CL')}<br><strong>VUELTO:</strong> $${o.changeAmount.toLocaleString('es-CL')}<br>`;
+      }
+
       document.getElementById('print-area').innerHTML = `
         <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 8px;">
           <h2 style="margin: 0; font-size: 18px; font-weight: bold;">SUSHI & WOK</h2>
@@ -909,8 +1218,7 @@
           <strong>TELÉFONO:</strong> ${o.phone}<br>
           <strong>TIPO:</strong> ${o.deliveryType}<br>
           ${o.deliveryType === 'Domicilio' ? `<strong>DIRECCIÓN:</strong> ${o.address}<br>` : ''}
-          <strong>MEDIO DE PAGO:</strong> ${o.paymentMethod}<br>
-          ${o.changeInfo ? `<strong>PAGO/VUELTO:</strong> ${o.changeInfo}<br>` : ''}
+          ${paymentTicketTxt}
           ${o.notes ? `<div style="margin-top: 5px; padding: 4px; border: 1px solid #000; font-weight: bold;">⚠️ NOTA COCINA: ${o.notes}</div>` : ''}
         </div>
         <hr style="border-top: 1px dashed #000; margin: 6px 0;">
@@ -945,9 +1253,15 @@
       dayOrders.forEach(o => {
         totalSales += (o.grandTotal || 0);
 
-        if (o.paymentMethod === 'Efectivo') totalCash += (o.grandTotal || 0);
-        else if (o.paymentMethod === 'Transferencia') totalTransfers += (o.grandTotal || 0);
-        else if (o.paymentMethod === 'Tarjeta') totalCard += (o.grandTotal || 0);
+        if (o.paymentBreakdown) {
+          totalCash += (o.paymentBreakdown.cash || 0);
+          totalCard += (o.paymentBreakdown.card || 0);
+          totalTransfers += (o.paymentBreakdown.transfer || 0);
+        } else {
+          if (o.paymentMethod === 'Efectivo') totalCash += (o.grandTotal || 0);
+          else if (o.paymentMethod === 'Transferencia') totalTransfers += (o.grandTotal || 0);
+          else if (o.paymentMethod === 'Tarjeta') totalCard += (o.grandTotal || 0);
+        }
 
         if (o.deliveryType === 'Domicilio') {
           deliveryCount++;
