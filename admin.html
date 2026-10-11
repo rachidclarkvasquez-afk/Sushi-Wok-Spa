@@ -30,6 +30,10 @@
       <div class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-2">
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> Sistema En Vivo
       </div>
+      <!-- Botón para activar audio de alertas (requerido por navegadores) -->
+      <button onclick="enableAudioAlerts()" id="audio-enable-btn" class="bg-amber-500 hover:bg-amber-600 text-gray-950 text-xs font-extrabold px-3 py-1.5 rounded-xl shadow">
+        🔔 Activar Alarma Sonora
+      </button>
     </div>
   </header>
 
@@ -63,7 +67,7 @@
     <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
         <h2 class="text-lg font-black text-white">📊 Balance y Estadísticas de Ventas</h2>
-        <p class="text-xs text-gray-400">Selecciona el día para calcular la caja y pago a repartidores.</p>
+        <p class="text-xs text-gray-400">Pedidos entregados y archivados para tu cuadre diario.</p>
       </div>
       <div class="flex items-center gap-2">
         <label class="text-xs font-bold text-gray-400">Fecha:</label>
@@ -118,10 +122,7 @@
         <p class="text-xs text-gray-400">Pausa productos agotados o cambia sus precios en tiempo real.</p>
       </div>
     </div>
-
-    <div class="bg-gray-900 rounded-2xl p-4 border border-gray-800 space-y-3" id="admin-menu-list">
-      <!-- Inyectado por JS -->
-    </div>
+    <div class="bg-gray-900 rounded-2xl p-4 border border-gray-800 space-y-3" id="admin-menu-list"></div>
   </section>
 
   <div id="print-area"></div>
@@ -136,12 +137,49 @@
     let allOrders = {};
     let currentLiveFilter = 'Todos';
     let menuProducts = [];
+    let audioAllowed = false;
+    let previousOrderCount = null;
 
     document.getElementById('report-date-picker').value = new Date().toISOString().split('T')[0];
 
-    // Escuchar Pedidos
+    function enableAudioAlerts() {
+      audioAllowed = true;
+      playBeep();
+      document.getElementById('audio-enable-btn').innerText = "✅ Alarma Activada";
+      document.getElementById('audio-enable-btn').classList.remove('bg-amber-500', 'hover:bg-amber-600', 'text-gray-950');
+      document.getElementById('audio-enable-btn').classList.add('bg-emerald-600', 'text-white');
+    }
+
+    function playBeep() {
+      if (!audioAllowed) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = 800;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.4);
+      } catch (e) {
+        console.log("Audio no soportado automáticamente");
+      }
+    }
+
+    // Escuchar Pedidos en Tiempo Real
     db.ref('pedidos').on('value', (snapshot) => {
-      allOrders = snapshot.val() || {};
+      const data = snapshot.val() || {};
+      
+      // Detectar si entró un nuevo pedido para sonar la alarma
+      const currentKeys = Object.keys(data);
+      if (previousOrderCount !== null && currentKeys.length > previousOrderCount) {
+        playBeep();
+      }
+      previousOrderCount = currentKeys.length;
+
+      allOrders = data;
       renderLiveOrders();
       renderReports();
     });
@@ -184,15 +222,26 @@
       renderLiveOrders();
     }
 
+    // Calcular minutos transcurridos desde que entró el pedido
+    function getElapsedTime(timestamp) {
+      if (!timestamp) return "Reciente";
+      const diffMin = Math.floor((Date.now() - timestamp) / 60000);
+      if (diffMin < 1) return "Hace un momento";
+      return `⏱️ Lleva ${diffMin} min`;
+    }
+
     function renderLiveOrders() {
       const container = document.getElementById('orders-container');
       container.innerHTML = '';
 
       const ordersArray = Object.keys(allOrders).map(key => ({ id: key, ...allOrders[key] })).reverse();
-      const filtered = currentLiveFilter === 'Todos' ? ordersArray : ordersArray.filter(o => o.status === currentLiveFilter);
+      
+      // En la pantalla principal SOLO mostramos los que NO estén entregados (para archivar los entregados)
+      const activeOrders = ordersArray.filter(o => o.status !== 'Entregado');
+      const filtered = currentLiveFilter === 'Todos' ? activeOrders : activeOrders.filter(o => o.status === currentLiveFilter);
 
       if (filtered.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-16 font-bold">Sin pedidos en esta categoría... 🥢</div>`;
+        container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-16 font-bold">Sin pedidos activos por el momento... 🥢</div>`;
         return;
       }
 
@@ -200,7 +249,6 @@
         let statusColor = "bg-amber-500/20 text-amber-400 border-amber-500/40";
         if (order.status === 'En Preparación') statusColor = "bg-blue-500/20 text-blue-400 border-blue-500/40";
         if (order.status === 'En Camino') statusColor = "bg-purple-500/20 text-purple-400 border-purple-500/40";
-        if (order.status === 'Entregado') statusColor = "bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
 
         let itemsHtml = order.items.map(i => `
           <div class="flex justify-between text-xs py-1 border-b border-gray-800/60">
@@ -209,13 +257,15 @@
           </div>
         `).join('');
 
+        const timeElapsedStr = getElapsedTime(order.timestamp);
+
         container.innerHTML += `
           <div class="bg-gray-900 rounded-2xl p-4 border border-gray-800 shadow-xl space-y-3">
             <div class="flex justify-between items-start">
               <div>
-                <span class="text-[10px] font-bold text-gray-500">HORA: ${order.date}</span>
-                <h3 class="text-base font-black text-white mt-0.5">${order.customer}</h3>
-                <p class="text-xs text-amber-400 font-bold">📞 ${order.phone}</p>
+                <span class="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">${timeElapsedStr}</span>
+                <h3 class="text-base font-black text-white mt-1">${order.customer}</h3>
+                <p class="text-xs text-gray-400 font-bold">📞 ${order.phone}</p>
               </div>
               <span class="px-2 py-0.5 rounded-lg text-[11px] font-bold border ${statusColor}">${order.status}</span>
             </div>
@@ -240,15 +290,18 @@
               <button onclick="printCustomerTicket('${order.id}')" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">🖨️ Ticket Cliente</button>
             </div>
 
+            <!-- Botones de Estado y Archivado Automático al Entregar -->
             <div class="grid grid-cols-3 gap-1 pt-1">
               <button onclick="updateStatus('${order.id}', 'En Preparación')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] py-2 rounded-lg">👨‍🍳 Cocina</button>
               <button onclick="updateStatus('${order.id}', 'En Camino')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] py-2 rounded-lg">🛵 Reparto</button>
               <button onclick="updateStatus('${order.id}', 'Entregado')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] py-2 rounded-lg">✅ Entregado</button>
             </div>
 
-            <div class="grid grid-cols-2 gap-1.5 pt-1 border-t border-gray-800/60">
-              <button onclick="sendCustomerWsp('${order.id}')" class="bg-emerald-950 hover:bg-emerald-900 border border-emerald-600/40 text-emerald-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">💬 Avisar Cliente</button>
-              <button onclick="sendDriverWsp('${order.id}')" class="bg-amber-950 hover:bg-amber-900 border border-amber-600/40 text-amber-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">🛵 Enviar Repartidor</button>
+            <!-- Botones WhatsApp (Incluye botón directo de 'Va en camino') -->
+            <div class="grid grid-cols-3 gap-1 pt-1 border-t border-gray-800/60">
+              <button onclick="sendCustomerWsp('${order.id}')" class="bg-emerald-950 hover:bg-emerald-900 border border-emerald-600/40 text-emerald-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center">💬 Avisar</button>
+              <button onclick="sendOnWayWsp('${order.id}')" class="bg-blue-950 hover:bg-blue-900 border border-blue-600/40 text-blue-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center">🛵 ¡Va en Camino!</button>
+              <button onclick="sendDriverWsp('${order.id}')" class="bg-amber-950 hover:bg-amber-900 border border-amber-600/40 text-amber-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center">🗺️ Repartidor</button>
             </div>
           </div>
         `;
@@ -259,7 +312,54 @@
       db.ref(`pedidos/${orderId}`).update({ status: newStatus });
     }
 
-    // ⚙️ GESTIÓN DE PRODUCTOS / DISPONIBILIDAD / PRECIOS
+    // 💬 WhatsApp: Avisar que pedido va en camino
+    function sendOnWayWsp(orderId) {
+      const o = allOrders[orderId];
+      if (!o) return;
+      let phone = o.phone.replace(/[^0-9]/g, '');
+      if (!phone.startsWith('56')) phone = '56' + phone;
+
+      let msg = `Hola *${o.customer}*! 👋 De *SUSHI & WOK* 🥢 te informamos que tu pedido **¡YA VA EN CAMINO!** 🛵💨 hacia tu dirección.\n\n`;
+      msg += `💰 Total a cancelar: *$${o.grandTotal.toLocaleString('es-CL')}* (${o.paymentMethod})\n\n`;
+      msg += `¡Prepara tu mesa y gracias por preferirnos! 🍣`;
+
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      updateStatus(orderId, 'En Camino');
+    }
+
+    function sendCustomerWsp(orderId) {
+      const o = allOrders[orderId];
+      if (!o) return;
+      let phone = o.phone.replace(/[^0-9]/g, '');
+      if (!phone.startsWith('56')) phone = '56' + phone;
+
+      let msg = `Hola *${o.customer}*! 👋 Saludos de *SUSHI & WOK* 🥢.\n`;
+      msg += `Tu pedido se encuentra actualizando su estado a: *${o.status.toUpperCase()}*.\n`;
+      if (o.deliveryType === 'Domicilio') msg += `🛵 Dirección de entrega: ${o.address}\n`;
+      msg += `💰 Total a pagar: *$${o.grandTotal.toLocaleString('es-CL')}* (${o.paymentMethod})\n\n`;
+      msg += `¡Muchas gracias por elegirnos! 🍣`;
+
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function sendDriverWsp(orderId) {
+      const o = allOrders[orderId];
+      if (!o) return;
+
+      let msg = `🛵 *PEDIDO PARA REPARTO - SUSHI & WOK*\n`;
+      msg += `----------------------------------\n`;
+      msg += `👤 *Cliente:* ${o.customer}\n`;
+      msg += `📞 *Teléfono:* ${o.phone}\n`;
+      msg += `📍 *Dirección:* ${o.address}\n`;
+      msg += `🗺️ *Mapa GPS:* https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.address + ', Valdivia')}\n`;
+      msg += `----------------------------------\n`;
+      msg += `💵 *Cobro en destino:* ${o.paymentMethod} ($${o.grandTotal.toLocaleString('es-CL')})\n`;
+      if (o.changeInfo) msg += `⚠️ *Vuelto:* ${o.changeInfo}\n`;
+      msg += `💰 *Pago de envío:* $${(o.deliveryCost || 0).toLocaleString('es-CL')}\n`;
+
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
     function renderAdminMenu() {
       const container = document.getElementById('admin-menu-list');
       container.innerHTML = '';
@@ -277,13 +377,11 @@
             </div>
 
             <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-gray-800 pt-2 sm:pt-0">
-              <!-- Cambiar Precio -->
               <div class="flex items-center gap-1">
                 <span class="text-xs text-gray-400">$</span>
                 <input type="number" value="${p.price}" onchange="updateProductPrice(${idx}, this.value)" class="w-20 bg-gray-900 border border-gray-700 text-amber-400 font-bold text-xs p-1.5 rounded-lg text-right">
               </div>
 
-              <!-- Toggle Disponibilidad -->
               <button onclick="toggleProductStock(${idx})" class="px-3 py-1.5 rounded-lg font-bold text-xs ${isAvail ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}">
                 ${isAvail ? '🟢 Disponible' : '🔴 Agotado'}
               </button>
@@ -370,39 +468,6 @@
         <p style="text-align: center; font-size: 11px; margin: 0;">¡Muchas gracias por su preferencia! 🥢</p>
       `;
       window.print();
-    }
-
-    function sendCustomerWsp(orderId) {
-      const o = allOrders[orderId];
-      if (!o) return;
-      let phone = o.phone.replace(/[^0-9]/g, '');
-      if (!phone.startsWith('56')) phone = '56' + phone;
-
-      let msg = `Hola *${o.customer}*! 👋 Saludos de *SUSHI & WOK* 🥢.\n\n`;
-      msg += `Tu pedido se encuentra actualizando su estado a: *${o.status.toUpperCase()}*.\n`;
-      if (o.deliveryType === 'Domicilio') msg += `🛵 Dirección de entrega: ${o.address}\n`;
-      msg += `💰 Total a pagar: *$${o.grandTotal.toLocaleString('es-CL')}* (${o.paymentMethod})\n\n`;
-      msg += `¡Muchas gracias por elegirnos! 🍣`;
-
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-    }
-
-    function sendDriverWsp(orderId) {
-      const o = allOrders[orderId];
-      if (!o) return;
-
-      let msg = `🛵 *PEDIDO PARA REPARTO - SUSHI & WOK*\n`;
-      msg += `----------------------------------\n`;
-      msg += `👤 *Cliente:* ${o.customer}\n`;
-      msg += `📞 *Teléfono:* ${o.phone}\n`;
-      msg += `📍 *Dirección:* ${o.address}\n`;
-      msg += `🗺️ *Mapa GPS:* https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.address + ', Valdivia')}\n`;
-      msg += `----------------------------------\n`;
-      msg += `💵 *Cobro en destino:* ${o.paymentMethod} ($${o.grandTotal.toLocaleString('es-CL')})\n`;
-      if (o.changeInfo) msg += `⚠️ *Vuelto:* ${o.changeInfo}\n`;
-      msg += `💰 *Pago de envío:* $${(o.deliveryCost || 0).toLocaleString('es-CL')}\n`;
-
-      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
     function renderReports() {
