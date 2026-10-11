@@ -11,6 +11,8 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     @media print {
       body * { visibility: hidden; }
       #print-area, #print-area * { visibility: visible; }
@@ -126,34 +128,31 @@
     <div class="bg-gray-900 rounded-2xl p-4 border border-gray-800 space-y-3" id="admin-menu-list"></div>
   </section>
 
-  <!-- MODAL EDITAR COMANDA -->
-  <div id="edit-order-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-gray-900 w-full max-w-lg rounded-3xl p-6 border border-gray-800 space-y-4 max-h-[90vh] overflow-y-auto">
+  <!-- MODAL EDITAR COMANDA CON CATÁLOGO VISUAL -->
+  <div id="edit-order-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-gray-900 w-full max-w-xl rounded-3xl p-5 border border-gray-800 space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-gray-800 pb-3">
         <h3 class="font-black text-lg text-amber-400">✏️ Modificar Pedido de <span id="edit-modal-client"></span></h3>
         <button onclick="closeEditModal()" class="text-gray-400 font-bold text-2xl">✕</button>
       </div>
 
-      <!-- Agregar Plato del Menú al Pedido -->
-      <div class="bg-gray-950 p-3 rounded-2xl border border-gray-800 space-y-2">
-        <label class="block text-xs font-bold text-amber-400 uppercase">➕ Agregar Producto al Pedido:</label>
-        <div class="flex gap-2">
-          <select id="edit-add-product-select" class="bg-gray-900 border border-gray-700 text-white text-xs p-2.5 rounded-xl flex-1 focus:outline-amber-500">
-            <!-- Inyectado por JS -->
-          </select>
-          <button onclick="addItemToOrder()" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black text-xs px-4 rounded-xl">Agregar</button>
+      <!-- Ítems Actuales en el Pedido -->
+      <div class="space-y-2">
+        <label class="block text-xs font-bold text-amber-400 uppercase">📋 Productos en la Comanda Actual:</label>
+        <div id="edit-items-container" class="space-y-2 max-h-40 overflow-y-auto p-1 bg-gray-950/50 rounded-xl"></div>
+      </div>
+
+      <!-- Catálogo Visual con Imágenes para Agregar -->
+      <div class="space-y-2 pt-2 border-t border-gray-800">
+        <label class="block text-xs font-bold text-gray-400 uppercase">🍱 Toca un producto para agregar al pedido:</label>
+        <div id="visual-product-picker" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1 no-scrollbar">
+          <!-- Inyectado por JS con fotos -->
         </div>
       </div>
 
-      <!-- Ítems Actuales -->
-      <div class="space-y-2">
-        <label class="block text-xs font-bold text-gray-400 uppercase">Productos en la Comanda:</label>
-        <div id="edit-items-container" class="space-y-2"></div>
-      </div>
-
-      <!-- Costos -->
+      <!-- Resumen de Costos -->
       <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-1 text-xs">
-        <div class="flex justify-between text-gray-400"><span>Subtotal:</span><span id="edit-subtotal-val">$0</span></div>
+        <div class="flex justify-between text-gray-400"><span>Subtotal Platos:</span><span id="edit-subtotal-val">$0</span></div>
         <div class="flex justify-between text-gray-400"><span>Costo Despacho:</span><span id="edit-delivery-val">$0</span></div>
         <div class="flex justify-between text-base font-black text-emerald-400 pt-1 border-t border-gray-800"><span>NUEVO TOTAL:</span><span id="edit-total-val">$0</span></div>
       </div>
@@ -337,7 +336,7 @@
       });
     }
 
-    // ✏️ LÓGICA DE EDICIÓN DE COMANDA
+    // ✏️ LÓGICA DE EDICIÓN CON TARJETAS VISUALES DE PLATOS
     function openEditModal(orderId) {
       editingOrderId = orderId;
       const order = allOrders[orderId];
@@ -346,14 +345,8 @@
       document.getElementById('edit-modal-client').innerText = order.customer;
       editingCartItems = JSON.parse(JSON.stringify(order.items || []));
 
-      // Llenar selector de productos
-      const select = document.getElementById('edit-add-product-select');
-      select.innerHTML = '';
-      menuProducts.forEach(p => {
-        select.innerHTML += `<option value="${p.id}">${p.name} - $${p.price.toLocaleString('es-CL')}</option>`;
-      });
-
       renderEditItems();
+      renderVisualProductPicker();
       document.getElementById('edit-order-modal').classList.remove('hidden');
     }
 
@@ -365,14 +358,20 @@
       const container = document.getElementById('edit-items-container');
       container.innerHTML = '';
 
+      if (editingCartItems.length === 0) {
+        container.innerHTML = `<p class="text-xs text-gray-500 italic p-2">No hay platos en la comanda.</p>`;
+        calculateEditTotals();
+        return;
+      }
+
       editingCartItems.forEach((item, idx) => {
         container.innerHTML += `
           <div class="flex justify-between items-center bg-gray-950 p-2 rounded-xl border border-gray-800 text-xs">
             <span class="font-bold text-gray-200">${item.name} <em class="text-[10px] text-gray-400">${item.detail || ''}</em></span>
             <div class="flex items-center gap-2">
-              <button onclick="changeItemQty(${idx}, -1)" class="w-5 h-5 bg-gray-800 text-white rounded font-bold">-</button>
+              <button onclick="changeItemQty(${idx}, -1)" class="w-6 h-6 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-bold flex items-center justify-center">-</button>
               <span class="font-bold text-amber-400 w-4 text-center">${item.qty}</span>
-              <button onclick="changeItemQty(${idx}, 1)" class="w-5 h-5 bg-gray-800 text-white rounded font-bold">+</button>
+              <button onclick="changeItemQty(${idx}, 1)" class="w-6 h-6 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-bold flex items-center justify-center">+</button>
               <button onclick="removeItemFromEdit(${idx})" class="text-red-400 font-bold px-1 ml-1">🗑️</button>
             </div>
           </div>
@@ -380,6 +379,38 @@
       });
 
       calculateEditTotals();
+    }
+
+    // Renderizado Visual de Productos con Imagen para seleccionar
+    function renderVisualProductPicker() {
+      const container = document.getElementById('visual-product-picker');
+      container.innerHTML = '';
+
+      menuProducts.forEach(p => {
+        container.innerHTML += `
+          <div onclick="addVisualItemToOrder(${p.id})" class="flex items-center gap-2.5 p-2 bg-gray-950 hover:bg-gray-800/80 border border-gray-800 rounded-xl cursor-pointer transition-all active:scale-95">
+            <img src="${p.img}" class="w-12 h-12 rounded-lg object-cover bg-gray-800">
+            <div class="flex-1 min-w-0">
+              <h5 class="text-xs font-bold text-white truncate">${p.name}</h5>
+              <p class="text-[11px] font-black text-amber-400">$${p.price.toLocaleString('es-CL')}</p>
+            </div>
+            <button class="bg-amber-500 text-gray-950 font-black text-xs px-2.5 py-1 rounded-lg hover:bg-amber-400">+ Agregar</button>
+          </div>
+        `;
+      });
+    }
+
+    function addVisualItemToOrder(prodId) {
+      const prod = menuProducts.find(p => p.id === prodId);
+      if (!prod) return;
+
+      const idx = editingCartItems.findIndex(i => i.id === prod.id && !i.detail);
+      if (idx >= 0) {
+        editingCartItems[idx].qty += 1;
+      } else {
+        editingCartItems.push({ id: prod.id, name: prod.name, price: prod.price, qty: 1, detail: "" });
+      }
+      renderEditItems();
     }
 
     function changeItemQty(idx, delta) {
@@ -390,20 +421,6 @@
 
     function removeItemFromEdit(idx) {
       editingCartItems.splice(idx, 1);
-      renderEditItems();
-    }
-
-    function addItemToOrder() {
-      const prodId = parseInt(document.getElementById('edit-add-product-select').value);
-      const prod = menuProducts.find(p => p.id === prodId);
-      if (!prod) return;
-
-      const idx = editingCartItems.findIndex(i => i.id === prod.id && !i.detail);
-      if (idx >= 0) {
-        editingCartItems[idx].qty += 1;
-      } else {
-        editingCartItems.push({ id: prod.id, name: prod.name, price: prod.price, qty: 1, detail: "" });
-      }
       renderEditItems();
     }
 
