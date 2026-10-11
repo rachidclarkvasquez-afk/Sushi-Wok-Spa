@@ -1,31 +1,134 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Comandero Cocina - SUSHI & WOK</title>
+  <title>POS & Comandero - SUSHI & WOK</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Firebase Scripts -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-</head>
-<body class="bg-gray-900 text-white min-h-screen p-4">
 
-  <header class="flex justify-between items-center border-b border-gray-800 pb-4 mb-6">
+  <style>
+    /* Estilos exclusivos para Impresión Térmica (80mm / 58mm) */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #print-area, #print-area * {
+        visibility: visible;
+      }
+      #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        max-width: 80mm;
+        font-family: monospace;
+        color: #000;
+        background: #fff;
+        padding: 5px;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen p-3 md:p-6 font-sans">
+
+  <!-- Header -->
+  <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-gray-800 pb-4 mb-6 gap-3">
     <div>
-      <h1 class="text-2xl font-black text-amber-400">🥢 SUSHI & WOK - COMANDERO COCINA</h1>
+      <h1 class="text-2xl font-black text-amber-400 flex items-center gap-2">🥢 SUSHI & WOK <span class="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md font-bold">PANEL CONTROL</span></h1>
       <p class="text-xs text-gray-400">Av. Ramón Picarte 3045, Valdivia</p>
     </div>
-    <div class="bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-2">
-      <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> En Vivo
+    <div class="flex items-center gap-3">
+      <div class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> Sistema En Vivo
+      </div>
     </div>
   </header>
 
-  <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="orders-container">
-    <!-- Comandas en tiempo real -->
-  </main>
+  <!-- Pestañas de Navegación -->
+  <div class="flex gap-2 border-b border-gray-800 pb-3 mb-6 overflow-x-auto">
+    <button onclick="switchTab('comandero')" id="tab-btn-comandero" class="tab-btn bg-amber-500 text-gray-950 font-black px-4 py-2 rounded-xl text-xs flex items-center gap-2 whitespace-nowrap shadow-md">
+      👨‍🍳 Comandero Activo
+    </button>
+    <button onclick="switchTab('reportes')" id="tab-btn-reportes" class="tab-btn bg-gray-800 text-gray-300 hover:bg-gray-700 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 whitespace-nowrap">
+      📊 Cuadre de Caja y Reportes
+    </button>
+  </div>
+
+  <!-- SECCIÓN 1: COMANDERO EN TIEMPO REAL -->
+  <section id="sec-comandero" class="space-y-4">
+    <!-- Filtros Rápidos -->
+    <div class="flex flex-wrap gap-2 items-center bg-gray-900 p-3 rounded-xl border border-gray-800 text-xs">
+      <span class="font-bold text-gray-400 mr-2">Filtrar Estado:</span>
+      <button onclick="filterLiveOrders('Todos')" class="btn-f-live bg-amber-500 text-gray-950 px-3 py-1 rounded-lg font-bold">Todos</button>
+      <button onclick="filterLiveOrders('Pendiente')" class="btn-f-live bg-gray-800 text-gray-300 px-3 py-1 rounded-lg font-bold">Pendientes</button>
+      <button onclick="filterLiveOrders('En Preparación')" class="btn-f-live bg-gray-800 text-gray-300 px-3 py-1 rounded-lg font-bold">En Cocina</button>
+      <button onclick="filterLiveOrders('En Camino')" class="btn-f-live bg-gray-800 text-gray-300 px-3 py-1 rounded-lg font-bold">En Reparto</button>
+    </div>
+
+    <!-- Grid de Comandas -->
+    <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="orders-container">
+      <!-- Inyectado por JS -->
+    </main>
+  </section>
+
+  <!-- SECCIÓN 2: CUADRE DE CAJA Y REPORTES -->
+  <section id="sec-reportes" class="space-y-6 hidden">
+    <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div>
+        <h2 class="text-lg font-black text-white">📊 Balance y Estadísticas de Ventas</h2>
+        <p class="text-xs text-gray-400">Selecciona el día para calcular la caja y pago a repartidores.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-xs font-bold text-gray-400">Fecha:</label>
+        <input type="date" id="report-date-picker" onchange="renderReports()" class="bg-gray-800 border border-gray-700 text-white text-xs font-bold px-3 py-2 rounded-xl focus:outline-amber-500">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800">
+        <p class="text-[11px] font-bold text-gray-400 uppercase">Total Vendido Día</p>
+        <h3 id="stat-total-sales" class="text-xl sm:text-2xl font-black text-amber-400 mt-1">$0</h3>
+        <p id="stat-order-count" class="text-[10px] text-gray-500 font-bold mt-1">0 pedidos entregados</p>
+      </div>
+      <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800">
+        <p class="text-[11px] font-bold text-gray-400 uppercase">💵 Efectivo en Caja</p>
+        <h3 id="stat-cash" class="text-xl sm:text-2xl font-black text-emerald-400 mt-1">$0</h3>
+      </div>
+      <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800">
+        <p class="text-[11px] font-bold text-gray-400 uppercase">🏦 Transferencias</p>
+        <h3 id="stat-transfers" class="text-xl sm:text-2xl font-black text-blue-400 mt-1">$0</h3>
+      </div>
+      <div class="bg-gray-900 p-4 rounded-2xl border border-gray-800">
+        <p class="text-[11px] font-bold text-gray-400 uppercase">💳 Tarjeta / POS</p>
+        <h3 id="stat-card" class="text-xl sm:text-2xl font-black text-purple-400 mt-1">$0</h3>
+      </div>
+    </div>
+
+    <div class="bg-gray-900 p-5 rounded-2xl border border-gray-800 space-y-3">
+      <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+        <h3 class="font-bold text-amber-400 text-sm flex items-center gap-2">🛵 Pago de Envíos a Repartidores</h3>
+        <span id="stat-delivery-count" class="text-xs font-bold bg-amber-500/10 text-amber-400 px-2.5 py-1 rounded-lg">0 Envíos</span>
+      </div>
+      <div class="flex justify-between items-center">
+        <div>
+          <p class="text-xs text-gray-400">Total acumulado en costo de despacho a pagar:</p>
+          <p id="stat-delivery-total" class="text-xl font-black text-amber-400">$0</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-gray-900 p-5 rounded-2xl border border-gray-800 space-y-3">
+      <h3 class="font-bold text-white text-sm">🔥 Ranking: Platos Más Vendidos del Día</h3>
+      <div id="top-products-container" class="space-y-2 text-xs"></div>
+    </div>
+  </section>
+
+  <!-- ÁREA OCULTA DE IMPRESIÓN (Para impresoras térmicas de 80mm/58mm) -->
+  <div id="print-area"></div>
 
   <script>
     const firebaseConfig = {
@@ -34,45 +137,79 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    let allOrders = {};
+    let currentLiveFilter = 'Todos';
+
+    document.getElementById('report-date-picker').value = new Date().toISOString().split('T')[0];
+
     db.ref('pedidos').on('value', (snapshot) => {
-      const data = snapshot.val();
+      allOrders = snapshot.val() || {};
+      renderLiveOrders();
+      renderReports();
+    });
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-amber-500', 'text-gray-950');
+        btn.classList.add('bg-gray-800', 'text-gray-300');
+      });
+
+      if (tab === 'comandero') {
+        document.getElementById('tab-btn-comandero').classList.add('bg-amber-500', 'text-gray-950');
+        document.getElementById('sec-comandero').classList.remove('hidden');
+        document.getElementById('sec-reportes').classList.add('hidden');
+      } else {
+        document.getElementById('tab-btn-reportes').classList.add('bg-amber-500', 'text-gray-950');
+        document.getElementById('sec-reportes').classList.remove('hidden');
+        document.getElementById('sec-comandero').classList.add('hidden');
+        renderReports();
+      }
+    }
+
+    function filterLiveOrders(status) {
+      currentLiveFilter = status;
+      renderLiveOrders();
+    }
+
+    function renderLiveOrders() {
       const container = document.getElementById('orders-container');
       container.innerHTML = '';
 
-      if (!data) {
-        container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-20 font-bold">Sin pedidos activos por el momento... 🥢</div>`;
+      const ordersArray = Object.keys(allOrders).map(key => ({ id: key, ...allOrders[key] })).reverse();
+      const filtered = currentLiveFilter === 'Todos' ? ordersArray : ordersArray.filter(o => o.status === currentLiveFilter);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-16 font-bold">Sin pedidos en esta categoría... 🥢</div>`;
         return;
       }
 
-      const ordersArray = Object.keys(data).map(key => ({ id: key, ...data[key] })).reverse();
-
-      ordersArray.forEach(order => {
+      filtered.forEach(order => {
         let statusColor = "bg-amber-500/20 text-amber-400 border-amber-500/40";
         if (order.status === 'En Preparación') statusColor = "bg-blue-500/20 text-blue-400 border-blue-500/40";
         if (order.status === 'En Camino') statusColor = "bg-purple-500/20 text-purple-400 border-purple-500/40";
         if (order.status === 'Entregado') statusColor = "bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
 
         let itemsHtml = order.items.map(i => `
-          <div class="flex justify-between text-sm py-1 border-b border-gray-800">
-            <span><strong class="text-amber-400">${i.qty}x</strong> ${i.name} <em class="text-xs text-gray-400">${i.detail}</em></span>
+          <div class="flex justify-between text-xs py-1 border-b border-gray-800/60">
+            <span><strong class="text-amber-400">${i.qty}x</strong> ${i.name} <em class="text-[10px] text-gray-400">${i.detail || ''}</em></span>
             <span class="font-bold">$${(i.price * i.qty).toLocaleString('es-CL')}</span>
           </div>
         `).join('');
 
         container.innerHTML += `
-          <div class="bg-gray-800 rounded-2xl p-5 border border-gray-700 shadow-xl space-y-3">
+          <div class="bg-gray-900 rounded-2xl p-4 border border-gray-800 shadow-xl space-y-3">
             <div class="flex justify-between items-start">
               <div>
-                <span class="text-xs font-bold text-gray-400">HORA: ${order.date}</span>
-                <h3 class="text-lg font-black text-white mt-0.5">${order.customer}</h3>
+                <span class="text-[10px] font-bold text-gray-500">HORA: ${order.date}</span>
+                <h3 class="text-base font-black text-white mt-0.5">${order.customer}</h3>
                 <p class="text-xs text-amber-400 font-bold">📞 ${order.phone}</p>
               </div>
-              <span class="px-2.5 py-1 rounded-lg text-xs font-bold border ${statusColor}">${order.status}</span>
+              <span class="px-2 py-0.5 rounded-lg text-[11px] font-bold border ${statusColor}">${order.status}</span>
             </div>
 
-            <div class="bg-gray-900/60 p-3 rounded-xl space-y-1 text-xs">
+            <div class="bg-gray-950 p-2.5 rounded-xl space-y-1 text-xs border border-gray-800/80">
               <p class="font-bold text-gray-300">🛵 ${order.deliveryType} ${order.km ? `(~${order.km} KM)` : ''}</p>
-              <p class="text-gray-400">📍 ${order.address}</p>
+              <p class="text-gray-400 line-clamp-1">📍 ${order.address}</p>
               <p class="font-bold text-emerald-400">💳 ${order.paymentMethod} ${order.changeInfo ? '| ' + order.changeInfo : ''}</p>
             </div>
 
@@ -80,23 +217,224 @@
               ${itemsHtml}
             </div>
 
-            <div class="flex justify-between items-center text-sm font-black pt-2 border-t border-gray-700">
+            <div class="flex justify-between items-center text-xs font-black pt-2 border-t border-gray-800">
               <span>TOTAL COMANDA:</span>
-              <span class="text-emerald-400 text-lg">$${order.grandTotal.toLocaleString('es-CL')}</span>
+              <span class="text-emerald-400 text-base">$${order.grandTotal.toLocaleString('es-CL')}</span>
             </div>
 
-            <div class="grid grid-cols-3 gap-1.5 pt-2">
+            <!-- Botones de Impresión de Tickets -->
+            <div class="grid grid-cols-2 gap-1.5 pt-1">
+              <button onclick="printKitchenTicket('${order.id}')" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1 shadow-sm">
+                🖨️ Ticket Cocina
+              </button>
+              <button onclick="printCustomerTicket('${order.id}')" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">
+                🖨️ Ticket Cliente
+              </button>
+            </div>
+
+            <!-- Acciones de Estado -->
+            <div class="grid grid-cols-3 gap-1 pt-1">
               <button onclick="updateStatus('${order.id}', 'En Preparación')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] py-2 rounded-lg">👨‍🍳 Cocina</button>
               <button onclick="updateStatus('${order.id}', 'En Camino')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] py-2 rounded-lg">🛵 Reparto</button>
               <button onclick="updateStatus('${order.id}', 'Entregado')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] py-2 rounded-lg">✅ Entregado</button>
             </div>
+
+            <!-- Botones WhatsApp -->
+            <div class="grid grid-cols-2 gap-1.5 pt-1 border-t border-gray-800/60">
+              <button onclick="sendCustomerWsp('${order.id}')" class="bg-emerald-950 hover:bg-emerald-900 border border-emerald-600/40 text-emerald-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">
+                💬 Avisar Cliente
+              </button>
+              <button onclick="sendDriverWsp('${order.id}')" class="bg-amber-950 hover:bg-amber-900 border border-amber-600/40 text-amber-300 font-bold text-[10px] py-1.5 rounded-lg flex justify-center items-center gap-1">
+                🛵 Enviar Repartidor
+              </button>
+            </div>
           </div>
         `;
       });
-    });
+    }
 
     function updateStatus(orderId, newStatus) {
       db.ref(`pedidos/${orderId}`).update({ status: newStatus });
+    }
+
+    // 🖨️ IMPRIMIR TICKET PARA COCINA (Sin Precios)
+    function printKitchenTicket(orderId) {
+      const o = allOrders[orderId];
+      if (!o) return;
+
+      let itemsTxt = o.items.map(i => `
+        <div style="font-size: 16px; font-weight: bold; margin-bottom: 6px;">
+          ${i.qty}x ${i.name}<br>
+          <span style="font-size: 13px; font-style: italic; font-weight: normal;">${i.detail || ''}</span>
+        </div>
+      `).join('<hr style="border-top: 1px dashed #ccc; margin: 4px 0;">');
+
+      const printArea = document.getElementById('print-area');
+      printArea.innerHTML = `
+        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 8px;">
+          <h2 style="margin: 0; font-size: 18px; font-weight: bold;">*** COMANDA COCINA ***</h2>
+          <p style="margin: 2px 0; font-size: 12px;">HORA: ${o.date} | TIPO: ${o.deliveryType.toUpperCase()}</p>
+        </div>
+        <div style="margin-bottom: 8px; font-size: 13px;">
+          <strong>CLIENTE:</strong> ${o.customer}<br>
+          <strong>TEL:</strong> ${o.phone}
+        </div>
+        <hr style="border-top: 2px solid #000; margin: 6px 0;">
+        <div>${itemsTxt}</div>
+        <hr style="border-top: 2px solid #000; margin: 8px 0;">
+        <p style="text-align: center; font-size: 11px; margin: 0;">-- SUSHI & WOK COCINA --</p>
+      `;
+
+      window.print();
+    }
+
+    // 🖨️ IMPRIMIR TICKET PARA CLIENTE (Completo con cobro y dirección)
+    function printCustomerTicket(orderId) {
+      const o = allOrders[orderId];
+      if (!o) return;
+
+      let itemsTxt = o.items.map(i => `
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+          <span>${i.qty}x ${i.name} ${i.detail || ''}</span>
+          <span>$${(i.price * i.qty).toLocaleString('es-CL')}</span>
+        </div>
+      `).join('');
+
+      const printArea = document.getElementById('print-area');
+      printArea.innerHTML = `
+        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 8px;">
+          <h2 style="margin: 0; font-size: 18px; font-weight: bold;">SUSHI & WOK</h2>
+          <p style="margin: 2px 0; font-size: 10px;">Av. Ramón Picarte 3045, Valdivia</p>
+          <p style="margin: 0; font-size: 11px; font-weight: bold;">TICKET DE ENTREGA</p>
+        </div>
+        <div style="margin-bottom: 8px; font-size: 11px;">
+          <strong>HORA:</strong> ${o.date}<br>
+          <strong>CLIENTE:</strong> ${o.customer}<br>
+          <strong>TELÉFONO:</strong> ${o.phone}<br>
+          <strong>TIPO:</strong> ${o.deliveryType}<br>
+          ${o.deliveryType === 'Domicilio' ? `<strong>DIRECCIÓN:</strong> ${o.address}<br>` : ''}
+          <strong>MEDIO DE PAGO:</strong> ${o.paymentMethod}<br>
+          ${o.changeInfo ? `<strong>PAGO/VUELTO:</strong> ${o.changeInfo}<br>` : ''}
+        </div>
+        <hr style="border-top: 1px dashed #000; margin: 6px 0;">
+        <div>${itemsTxt}</div>
+        <hr style="border-top: 1px dashed #000; margin: 6px 0;">
+        <div style="font-size: 11px;">
+          <div style="display: flex; justify-content: space-between;"><span>Subtotal Platos:</span><span>$${(o.subtotal || 0).toLocaleString('es-CL')}</span></div>
+          <div style="display: flex; justify-content: space-between;"><span>Despacho:</span><span>$${(o.deliveryCost || 0).toLocaleString('es-CL')}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin-top: 4px; border-t: 1px solid #000; padding-top: 2px;">
+            <span>TOTAL:</span><span>$${o.grandTotal.toLocaleString('es-CL')}</span>
+          </div>
+        </div>
+        <hr style="border-top: 2px solid #000; margin: 8px 0;">
+        <p style="text-align: center; font-size: 11px; margin: 0;">¡Muchas gracias por su preferencia! 🥢</p>
+      `;
+
+      window.print();
+    }
+
+    function sendCustomerWsp(orderId) {
+      const o = allOrders[orderId];
+      if (!o) return;
+      let phone = o.phone.replace(/[^0-9]/g, '');
+      if (!phone.startsWith('56')) phone = '56' + phone;
+
+      let msg = `Hola *${o.customer}*! 👋 Saludos de *SUSHI & WOK* 🥢.\n\n`;
+      msg += `Tu pedido se encuentra actualizando su estado a: *${o.status.toUpperCase()}*.\n`;
+      if (o.deliveryType === 'Domicilio') {
+        msg += `🛵 Dirección de entrega: ${o.address}\n`;
+      }
+      msg += `💰 Total a pagar: *$${o.grandTotal.toLocaleString('es-CL')}* (${o.paymentMethod})\n\n`;
+      msg += `¡Muchas gracias por elegirnos! 🍣`;
+
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function sendDriverWsp(orderId) {
+      const o = allOrders[orderId];
+      if (!o) return;
+
+      let msg = `🛵 *PEDIDO PARA REPARTO - SUSHI & WOK*\n`;
+      msg += `----------------------------------\n`;
+      msg += `👤 *Cliente:* ${o.customer}\n`;
+      msg += `📞 *Teléfono:* ${o.phone}\n`;
+      msg += `📍 *Dirección:* ${o.address}\n`;
+      msg += `🗺️ *Mapa GPS:* https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.address + ', Valdivia')}\n`;
+      msg += `----------------------------------\n`;
+      msg += `💵 *Cobro en destino:* ${o.paymentMethod} ($${o.grandTotal.toLocaleString('es-CL')})\n`;
+      if (o.changeInfo) msg += `⚠️ *Vuelto:* ${o.changeInfo}\n`;
+      msg += `💰 *Pago de envío:* $${(o.deliveryCost || 0).toLocaleString('es-CL')}\n`;
+
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function renderReports() {
+      const selectedDate = document.getElementById('report-date-picker').value;
+      const ordersArray = Object.keys(allOrders).map(key => ({ id: key, ...allOrders[key] }));
+
+      const dayOrders = ordersArray.filter(o => {
+        if (!o.timestamp) return false;
+        const orderDateStr = new Date(o.timestamp).toISOString().split('T')[0];
+        return orderDateStr === selectedDate && o.status === 'Entregado';
+      });
+
+      let totalSales = 0, totalCash = 0, totalTransfers = 0, totalCard = 0, deliveryCount = 0, totalDeliveryCost = 0;
+      let productCounts = {};
+
+      dayOrders.forEach(o => {
+        totalSales += (o.grandTotal || 0);
+
+        if (o.paymentMethod === 'Efectivo') totalCash += (o.grandTotal || 0);
+        else if (o.paymentMethod === 'Transferencia') totalTransfers += (o.grandTotal || 0);
+        else if (o.paymentMethod === 'Tarjeta') totalCard += (o.grandTotal || 0);
+
+        if (o.deliveryType === 'Domicilio') {
+          deliveryCount++;
+          totalDeliveryCost += (o.deliveryCost || 0);
+        }
+
+        if (o.items && Array.isArray(o.items)) {
+          o.items.forEach(item => {
+            if (!productCounts[item.name]) productCounts[item.name] = { qty: 0, total: 0 };
+            productCounts[item.name].qty += item.qty;
+            productCounts[item.name].total += (item.price * item.qty);
+          });
+        }
+      });
+
+      document.getElementById('stat-total-sales').innerText = '$' + totalSales.toLocaleString('es-CL');
+      document.getElementById('stat-order-count').innerText = `${dayOrders.length} pedidos entregados`;
+
+      document.getElementById('stat-cash').innerText = '$' + totalCash.toLocaleString('es-CL');
+      document.getElementById('stat-transfers').innerText = '$' + totalTransfers.toLocaleString('es-CL');
+      document.getElementById('stat-card').innerText = '$' + totalCard.toLocaleString('es-CL');
+
+      document.getElementById('stat-delivery-count').innerText = `${deliveryCount} Envíos`;
+      document.getElementById('stat-delivery-total').innerText = '$' + totalDeliveryCost.toLocaleString('es-CL');
+
+      const topContainer = document.getElementById('top-products-container');
+      topContainer.innerHTML = '';
+
+      const sortedProducts = Object.keys(productCounts)
+        .map(name => ({ name, ...productCounts[name] }))
+        .sort((a, b) => b.qty - a.qty);
+
+      if (sortedProducts.length === 0) {
+        topContainer.innerHTML = `<p class="text-gray-500 italic">No hay registros de platos entregados en esta fecha.</p>`;
+        return;
+      }
+
+      sortedProducts.forEach((p, idx) => {
+        topContainer.innerHTML += `
+          <div class="flex justify-between items-center p-2.5 bg-gray-950 rounded-xl border border-gray-800">
+            <span class="font-bold text-gray-300"><strong class="text-amber-400">#${idx + 1}</strong> ${p.name}</span>
+            <div class="text-right">
+              <span class="font-extrabold text-amber-400 block">${p.qty} un.</span>
+              <span class="text-[10px] text-gray-500 font-semibold">$${p.total.toLocaleString('es-CL')}</span>
+            </div>
+          </div>
+        `;
+      });
     }
   </script>
 </body>
