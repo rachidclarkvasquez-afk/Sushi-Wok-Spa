@@ -777,80 +777,114 @@
         `;
       });
     }
-function openEditModal(orderId) {
-  editingOrderId = orderId;
-  const order = allOrders ? allOrders[orderId] : null;
-  
-  if (!order) {
-    alert("No se encontró el pedido en la base de datos.");
-    return;
-  }
 
-  // 1. Mostrar el modal primero para evitar bloqueos visuales
-  const modal = document.getElementById('edit-order-modal');
-  if (modal) modal.classList.remove('hidden');
+    function openEditModal(orderId) {
+      editingOrderId = orderId;
+      const order = allOrders ? allOrders[orderId] : null;
+      if (!order) return;
 
-  // 2. Obtener número correlativo de la comanda
-  const keys = Object.keys(allOrders || {});
-  const orderIndex = keys.indexOf(orderId) + 1;
-  const displayNum = orderIndex > 0 ? orderIndex : 1;
+      const modal = document.getElementById('edit-order-modal');
+      if (modal) modal.classList.remove('hidden');
 
-  const numEl = document.getElementById('edit-modal-order-num');
-  if (numEl) numEl.innerText = "#" + String(displayNum).padStart(3, '0');
+      const keys = Object.keys(allOrders || {});
+      const orderIndex = keys.indexOf(orderId) + 1;
+      const displayNum = orderIndex > 0 ? orderIndex : 1;
 
-  // 3. Cargar datos del cliente
-  const nameEl = document.getElementById('edit-cust-name');
-  const phoneEl = document.getElementById('edit-cust-phone');
-  if (nameEl) nameEl.value = order.customer || "";
-  if (phoneEl) phoneEl.value = order.phone || "";
+      const numEl = document.getElementById('edit-modal-order-num');
+      if (numEl) numEl.innerText = "#" + String(displayNum).padStart(3, '0');
 
-  // 4. Cargar copia de los productos del carrito
-  editingCartItems = JSON.parse(JSON.stringify(order.items || []));
+      const nameEl = document.getElementById('edit-cust-name');
+      const phoneEl = document.getElementById('edit-cust-phone');
+      if (nameEl) nameEl.value = order.customer || "";
+      if (phoneEl) phoneEl.value = order.phone || "";
 
-  // 5. Cargar tipo de entrega, dirección y notas
-  const delTypeSelect = document.getElementById('edit-delivery-type');
-  if (delTypeSelect) delTypeSelect.value = order.deliveryType || 'Retiro en Local';
-  
-  const addrEl = document.getElementById('edit-address-val');
-  const costEl = document.getElementById('edit-delivery-cost-val');
-  const notesEl = document.getElementById('edit-kitchen-notes');
-  const searchEl = document.getElementById('edit-product-search');
+      editingCartItems = JSON.parse(JSON.stringify(order.items || []));
 
-  if (addrEl) addrEl.value = order.address || '';
-  if (costEl) costEl.value = order.deliveryCost || 0;
-  if (notesEl) notesEl.value = order.notes || '';
-  if (searchEl) searchEl.value = '';
+      const delTypeSelect = document.getElementById('edit-delivery-type');
+      if (delTypeSelect) delTypeSelect.value = order.deliveryType || 'Retiro en Local';
+      
+      const addrEl = document.getElementById('edit-address-val');
+      const costEl = document.getElementById('edit-delivery-cost-val');
+      const notesEl = document.getElementById('edit-kitchen-notes');
+      const searchEl = document.getElementById('edit-product-search');
 
-  // 6. Cargar medio de pago y detalles de vuelto/múltiple
-  const paySelect = document.getElementById('edit-payment-method');
-  if (paySelect) {
-    paySelect.value = order.paymentMethod || 'Efectivo';
-    togglePaymentInputs('edit');
-  }
+      if (addrEl) addrEl.value = order.address || '';
+      if (costEl) costEl.value = order.deliveryCost || 0;
+      if (notesEl) notesEl.value = order.notes || '';
+      if (searchEl) searchEl.value = '';
 
-  if (order.paymentMethod === 'Efectivo') {
-    const cashEl = document.getElementById('edit-cash-amount');
-    if (cashEl) cashEl.value = order.cashAmount || '';
-  } else if (order.paymentMethod === 'Pago Múltiple' && order.paymentBreakdown) {
-    const mCash = document.getElementById('edit-multi-cash');
-    const mCashPaid = document.getElementById('edit-multi-cash-paid');
-    const mCard = document.getElementById('edit-multi-card');
-    const mTrans = document.getElementById('edit-multi-transfer');
+      const paySelect = document.getElementById('edit-payment-method');
+      if (paySelect) {
+        paySelect.value = order.paymentMethod || 'Efectivo';
+        togglePaymentInputs('edit');
+      }
 
-    if (mCash) mCash.value = order.paymentBreakdown.cash || 0;
-    if (mCashPaid) mCashPaid.value = order.paymentBreakdown.cashPaid || 0;
-    if (mCard) mCard.value = order.paymentBreakdown.card || 0;
-    if (mTrans) mTrans.value = order.paymentBreakdown.transfer || 0;
-    calculateMultiTotals('edit');
-  }
+      if (order.paymentMethod === 'Efectivo') {
+        const cashEl = document.getElementById('edit-cash-amount');
+        if (cashEl) cashEl.value = order.cashAmount || '';
+      } else if (order.paymentMethod === 'Pago Múltiple' && order.paymentBreakdown) {
+        const mCash = document.getElementById('edit-multi-cash');
+        const mCashPaid = document.getElementById('edit-multi-cash-paid');
+        const mCard = document.getElementById('edit-multi-card');
+        const mTrans = document.getElementById('edit-multi-transfer');
 
-  // 7. Renderizar vistas y calcular totales finales
-  toggleEditDeliveryFields();
-  renderEditItems();
-  renderVisualProductPicker();
-}
+        if (mCash) mCash.value = order.paymentBreakdown.cash || 0;
+        if (mCashPaid) mCashPaid.value = order.paymentBreakdown.cashPaid || 0;
+        if (mCard) mCard.value = order.paymentBreakdown.card || 0;
+        if (mTrans) mTrans.value = order.paymentBreakdown.transfer || 0;
+        calculateMultiTotals('edit');
+      }
 
-        function renderVisualProductPicker() {
+      toggleEditDeliveryFields();
+      renderEditItems();
+      renderVisualProductPicker();
+    }
+
+    function toggleEditDeliveryFields() {
+      const type = document.getElementById('edit-delivery-type').value;
+      const container = document.getElementById('edit-address-container');
+      if (type === 'Domicilio') {
+        container.classList.remove('hidden');
+      } else {
+        container.classList.add('hidden');
+        const costInput = document.getElementById('edit-delivery-cost-val');
+        if (costInput) costInput.value = 0;
+      }
+      calculateEditTotals();
+    }
+
+    function closeEditModal() {
+      document.getElementById('edit-order-modal').classList.add('hidden');
+    }
+
+    function renderEditItems() {
+      const container = document.getElementById('edit-items-container');
+      container.innerHTML = '';
+
+      if (editingCartItems.length === 0) {
+        container.innerHTML = `<p class="text-xs text-gray-500 italic p-2">No hay platos en la comanda.</p>`;
+        calculateEditTotals();
+        return;
+      }
+
+      editingCartItems.forEach((item, idx) => {
+        container.innerHTML += `
+          <div class="flex justify-between items-center bg-gray-950 p-2 rounded-xl border border-gray-800 text-xs">
+            <span class="font-bold text-gray-200">${item.name} <em class="text-[10px] text-gray-400">${item.detail || ''}</em></span>
+            <div class="flex items-center gap-2">
+              <button onclick="changeItemQty(${idx}, -1)" class="w-6 h-6 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-bold flex items-center justify-center">-</button>
+              <span class="font-bold text-amber-400 w-4 text-center">${item.qty}</span>
+              <button onclick="changeItemQty(${idx}, 1)" class="w-6 h-6 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-bold flex items-center justify-center">+</button>
+              <button onclick="removeItemFromEdit(${idx})" class="text-red-400 font-bold px-1 ml-1">🗑️</button>
+            </div>
+          </div>
+        `;
+      });
+
+      calculateEditTotals();
+    }
+
+    function renderVisualProductPicker() {
       const container = document.getElementById('visual-product-picker');
       const searchEl = document.getElementById('edit-product-search');
       const query = searchEl ? searchEl.value.toLowerCase() : '';
