@@ -106,43 +106,34 @@
     }
 
     function filterMenu() {
-      const query = document.getElementById('client-search').value.toLowerCase();
-      const container = document.getElementById('client-menu-container');
-      container.innerHTML = '';
+  const container = document.getElementById('client-menu-container');
+  container.innerHTML = '';
 
-      const filtered = clientProducts.filter(p => {
-        const matchesCat = selectedCat === 'Todas' || p.category === selectedCat;
-        const matchesSearch = p.name.toLowerCase().includes(query) || (p.description && p.description.toLowerCase().includes(query));
-        const isAvailable = p.available !== false;
-        return matchesCat && matchesSearch && isAvailable;
-      });
+  if (!clientProducts || clientProducts.length === 0) {
+    container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-12 font-bold">No hay productos en la variable...</div>`;
+    return;
+  }
 
-      if (filtered.length === 0) {
-        container.innerHTML = `
-          <div class="col-span-full text-center text-gray-500 py-12 font-bold">
-            No encontramos platos en esta categoría... 🍣
-          </div>`;
-        return;
-      }
-
-      filtered.forEach(p => {
-        container.innerHTML += `
-          <div class="bg-gray-900 rounded-2xl p-3.5 border border-gray-800/80 shadow-lg flex gap-3 items-center">
-            <img src="${p.img || 'https://via.placeholder.com/150'}" class="w-20 h-20 rounded-xl object-cover bg-gray-800 flex-shrink-0">
-            <div class="flex-1 min-w-0">
-              <h3 class="font-bold text-white text-sm truncate">${p.name}</h3>
-              <p class="text-[11px] text-gray-400 line-clamp-2 mt-0.5">${p.description || ''}</p>
-              <div class="flex justify-between items-center mt-2">
-                <span class="font-black text-amber-400 text-sm">$${(p.price || 0).toLocaleString('es-CL')}</span>
-                <button onclick="addToCart(${p.id})" class="bg-amber-500 hover:bg-amber-400 text-gray-950 font-black text-xs px-3 py-1.5 rounded-xl transition-all shadow-md active:scale-95">
-                  + Agregar
-                </button>
-              </div>
-            </div>
+  // Muestra todos los productos directamente sin filtros estrictos para probar
+  clientProducts.forEach(p => {
+    if (!p) return;
+    container.innerHTML += `
+      <div class="bg-gray-900 rounded-2xl p-3.5 border border-gray-800 shadow-lg flex gap-3 items-center">
+        <img src="${p.img || 'https://via.placeholder.com/150'}" class="w-20 h-20 rounded-xl object-cover bg-gray-800 flex-shrink-0">
+        <div class="flex-1 min-w-0">
+          <h3 class="font-bold text-white text-sm truncate">${p.name || 'Sin nombre'}</h3>
+          <p class="text-[11px] text-gray-400 line-clamp-2 mt-0.5">${p.description || p.category || ''}</p>
+          <div class="flex justify-between items-center mt-2">
+            <span class="font-black text-amber-400 text-sm">$${(p.price || 0).toLocaleString('es-CL')}</span>
+            <button onclick="addToCart(${p.id})" class="bg-amber-500 hover:bg-amber-400 text-gray-950 font-black text-xs px-3 py-1.5 rounded-xl transition-all shadow-md active:scale-95">
+              + Agregar
+            </button>
           </div>
-        `;
-      });
-    }
+        </div>
+      </div>
+    `;
+  });
+}
 
     function addToCart(prodId) {
       const prod = clientProducts.find(p => p.id === prodId);
