@@ -158,7 +158,7 @@
     </div>
   </section>
 
-  <!-- MODAL EDITAR COMANDA -->
+  <!-- MODAL EDITAR COMANDA CON NOTAS DE COCINA -->
   <div id="edit-order-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-4 hidden">
     <div class="bg-gray-900 w-full max-w-xl rounded-3xl p-5 border border-gray-800 space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-gray-800 pb-3">
@@ -185,6 +185,12 @@
         </div>
       </div>
 
+      <!-- CAJÓN DE NOTAS / COMENTARIOS PARA COCINA -->
+      <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-1 text-xs">
+        <label class="block font-bold text-amber-400 uppercase">📝 Observación / Notas para Cocina:</label>
+        <textarea id="edit-kitchen-notes" rows="2" placeholder="Ej: Sin sésamo, entregar a las 20:30, soya extra..." class="w-full bg-gray-900 border border-gray-700 text-white p-2 rounded-xl text-xs font-semibold focus:outline-amber-500"></textarea>
+      </div>
+
       <div class="space-y-2">
         <label class="block text-xs font-bold text-amber-400 uppercase">📋 Productos en la Comanda Actual:</label>
         <div id="edit-items-container" class="space-y-2 max-h-40 overflow-y-auto p-1 bg-gray-950/50 rounded-xl"></div>
@@ -207,7 +213,7 @@
     </div>
   </div>
 
-  <!-- MODAL NUEVO PEDIDO MANUAL -->
+  <!-- MODAL NUEVO PEDIDO MANUAL CON NOTAS PARA COCINA -->
   <div id="manual-order-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-4 hidden">
     <div class="bg-gray-900 w-full max-w-xl rounded-3xl p-5 border border-gray-800 space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-gray-800 pb-3">
@@ -242,6 +248,11 @@
             <option value="Tarjeta">💳 Tarjeta / POS</option>
           </select>
         </div>
+      </div>
+
+      <div class="text-xs">
+        <label class="block font-bold text-amber-400">📝 Observación para Cocina:</label>
+        <input type="text" id="manual-kitchen-notes" placeholder="Ej: Poca soya, sin palitos, etc." class="w-full mt-1 p-2 bg-gray-950 border border-gray-700 text-white rounded-xl font-semibold">
       </div>
 
       <div class="space-y-2">
@@ -296,16 +307,9 @@
     function playBeep() {
       if (!audioAllowed) return;
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.value = 800;
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.4);
+        const chime = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        chime.volume = 1.0;
+        chime.play().catch(e => console.log("Audio bloqueado por el navegador"));
       } catch (e) {}
     }
 
@@ -428,6 +432,7 @@
               <p class="font-bold text-gray-300">🛵 ${order.deliveryType} ${order.km ? `(~${order.km} KM)` : ''}</p>
               <p class="text-gray-400 line-clamp-1">📍 ${order.address}</p>
               <p class="font-bold text-emerald-400">💳 ${order.paymentMethod} ${order.changeInfo ? '| ' + order.changeInfo : ''}</p>
+              ${order.notes ? `<p class="mt-1 text-amber-300 font-bold bg-amber-500/10 p-1.5 rounded-lg border border-amber-500/20">📝 NOTA COCINA: ${order.notes}</p>` : ''}
             </div>
 
             <div class="space-y-1 my-2">
@@ -439,9 +444,7 @@
               <span class="text-emerald-400 text-base">$${order.grandTotal.toLocaleString('es-CL')}</span>
             </div>
 
-            <!-- BARRA INFERIOR SIMPLIFICADA (3 BOTONES UNIFICADOS) -->
             <div class="grid grid-cols-[1fr_auto_auto] gap-1.5 pt-2 border-t border-gray-800/80">
-              <!-- 1. Menú Único para Cambiar Estado y Notificar WhatsApp -->
               <select onchange="handleAction('${order.id}', this.value); this.value='';" class="bg-emerald-950 border border-emerald-600/40 text-emerald-300 font-bold text-xs py-2 px-2 rounded-xl focus:outline-none cursor-pointer">
                 <option value="" disabled selected>💬 Acciones / Estado ▾</option>
                 <option value="cocina">👨‍🍳 Aceptado / En Cocina</option>
@@ -449,12 +452,10 @@
                 <option value="entregado">✅ Marcar Entregado</option>
               </select>
 
-              <!-- 2. Botón Imprimir Ticket -->
               <button onclick="printCustomerTicket('${order.id}')" class="bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs px-3 py-2 rounded-xl">
                 🖨️ Imprimir
               </button>
 
-              <!-- 3. Botón Cancelar -->
               <button onclick="cancelOrder('${order.id}')" class="bg-red-950 hover:bg-red-900 border border-red-600/40 text-red-300 font-bold text-xs px-3 py-2 rounded-xl">
                 ❌
               </button>
@@ -534,6 +535,7 @@
               <p class="font-bold text-gray-300">🛵 ${order.deliveryType} ${order.km ? `(~${order.km} KM)` : ''}</p>
               <p class="text-gray-400 line-clamp-1">📍 ${order.address}</p>
               <p class="font-bold text-emerald-400">💳 ${order.paymentMethod} ${order.changeInfo ? '| ' + order.changeInfo : ''}</p>
+              ${order.notes ? `<p class="mt-1 text-amber-300 font-bold bg-amber-500/10 p-1 rounded">📝 NOTA: ${order.notes}</p>` : ''}
             </div>
 
             <div class="space-y-1 my-2">
@@ -567,6 +569,7 @@
       
       document.getElementById('edit-address-val').value = order.address || '';
       document.getElementById('edit-delivery-cost-val').value = order.deliveryCost || 0;
+      document.getElementById('edit-kitchen-notes').value = order.notes || '';
 
       toggleEditDeliveryFields();
       renderEditItems();
@@ -676,6 +679,7 @@
       const totals = calculateEditTotals();
       const delType = document.getElementById('edit-delivery-type').value;
       let address = document.getElementById('edit-address-val').value.trim();
+      const notes = document.getElementById('edit-kitchen-notes').value.trim();
 
       if (delType === 'Retiro en Local') {
         address = "Retiro en Local (Av. Picarte 3045)";
@@ -687,7 +691,8 @@
         address: address,
         deliveryCost: totals.deliveryCost,
         subtotal: totals.subtotal,
-        grandTotal: totals.grandTotal
+        grandTotal: totals.grandTotal,
+        notes: notes
       });
 
       closeEditModal();
@@ -698,6 +703,7 @@
       manualCartItems = [];
       document.getElementById('manual-cust-name').value = "Cliente Mesón";
       document.getElementById('manual-cust-phone').value = "+56900000000";
+      document.getElementById('manual-kitchen-notes').value = "";
       renderManualItems();
       renderManualVisualPicker();
       document.getElementById('manual-order-modal').classList.remove('hidden');
@@ -774,6 +780,7 @@
       const phone = document.getElementById('manual-cust-phone').value.trim() || "+56900000000";
       const delType = document.getElementById('manual-delivery-type').value;
       const payment = document.getElementById('manual-payment').value;
+      const notes = document.getElementById('manual-kitchen-notes').value.trim();
 
       const total = manualCartItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
 
@@ -790,7 +797,8 @@
         subtotal: total,
         deliveryCost: 0,
         grandTotal: total,
-        status: 'En Preparación'
+        status: 'En Preparación',
+        notes: notes
       };
 
       db.ref('pedidos').push(orderData);
@@ -858,7 +866,7 @@
         <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 8px;">
           <h2 style="margin: 0; font-size: 18px; font-weight: bold;">SUSHI & WOK</h2>
           <p style="margin: 2px 0; font-size: 10px;">Av. Ramón Picarte 3045, Valdivia</p>
-          <p style="margin: 0; font-size: 11px; font-weight: bold;">TICKET DE ENTREGA</p>
+          <p style="margin: 0; font-size: 11px; font-weight: bold;">TICKET DE COMANDA</p>
         </div>
         <div style="margin-bottom: 8px; font-size: 11px;">
           <strong>HORA:</strong> ${o.date}<br>
@@ -868,6 +876,7 @@
           ${o.deliveryType === 'Domicilio' ? `<strong>DIRECCIÓN:</strong> ${o.address}<br>` : ''}
           <strong>MEDIO DE PAGO:</strong> ${o.paymentMethod}<br>
           ${o.changeInfo ? `<strong>PAGO/VUELTO:</strong> ${o.changeInfo}<br>` : ''}
+          ${o.notes ? `<div style="margin-top: 5px; padding: 4px; border: 1px solid #000; font-weight: bold;">⚠️ NOTA COCINA: ${o.notes}</div>` : ''}
         </div>
         <hr style="border-top: 1px dashed #000; margin: 6px 0;">
         <div>${itemsTxt}</div>
