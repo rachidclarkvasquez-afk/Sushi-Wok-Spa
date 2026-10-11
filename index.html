@@ -162,6 +162,47 @@
     const WHATSAPP_PHONE = "56932649489";
     const STORE_LAT = -39.8251;
     const STORE_LNG = -73.2355;
+    // Cargar horario desde Firebase y validar si el local está abierto
+    db.ref('horario').on('value', (snapshot) => {
+      const horario = snapshot.val() || { open: "17:00", close: "23:55" };
+      checkIfOpen(horario.open, horario.close);
+    });
+
+    function checkIfOpen(openTimeStr, closeTimeStr) {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      const [openH, openM] = openTimeStr.split(':').map(Number);
+      const [closeH, closeM] = closeTimeStr.split(':').map(Number);
+
+      const openMinutes = openH * 60 + openM;
+      const closeMinutes = closeH * 60 + closeM;
+
+      let isOpen = false;
+      if (closeMinutes > openMinutes) {
+        isOpen = currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+      } else {
+        // Horario que cruza la medianoche
+        isOpen = currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
+      }
+
+      const banner = document.getElementById('store-status-banner'); // O el contenedor de aviso
+      const checkoutBtn = document.getElementById('checkout-btn'); // Botón de enviar pedido
+
+      if (!isOpen) {
+        if (checkoutBtn) {
+          checkoutBtn.disabled = true;
+          checkoutBtn.innerText = `🔒 Local Cerrado (Horario: ${openTimeStr} - ${closeTimeStr})`;
+          checkoutBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+      } else {
+        if (checkoutBtn) {
+          checkoutBtn.disabled = false;
+          checkoutBtn.innerText = "🚀 Enviar Pedido por WhatsApp";
+          checkoutBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+      }
+    }
 
     // 🕒 CONFIGURACIÓN DE HORARIO DE ATENCIÓN (Formato 24 Horas)
     const OPEN_HOUR = 17;   // 17:00 (5:00 PM)
